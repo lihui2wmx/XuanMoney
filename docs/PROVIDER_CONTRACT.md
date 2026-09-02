@@ -32,6 +32,20 @@ External model service (future)
 
 There is still no external provider SDK or network integration.
 
+## Package dependency direction
+
+`xuanmoney.model` is the lower-level provider transport package. It contains provider-neutral request/response contracts, `ModelProvider`, and provider adapter implementations. It must not depend on `xuanmoney.runtime` or financial/tool execution modules.
+
+`ModelPortProviderBridge` belongs to `xuanmoney.runtime` because it implements a runtime-facing contract while adapting the lower-level provider package.
+
+Required dependency direction:
+
+```text
+xuanmoney.runtime.provider_bridge -> xuanmoney.model
+```
+
+The reverse dependency is prohibited.
+
 ## Provider transport contract
 
 `ModelProvider.complete()` accepts a typed `ModelRequest` and returns a typed `ModelResponse`.
@@ -102,7 +116,7 @@ The repository contains:
 - provider-neutral `ModelProvider`;
 - `BaseModelAdapter` as the provider implementation boundary;
 - deterministic `EchoModelAdapter` contract coverage;
-- `ModelPortProviderBridge`;
+- runtime-owned `ModelPortProviderBridge`;
 - deterministic fake-provider bridge tests including a real `BoundedModelRuntime` integration path.
 
 No vendor SDK, credentials, network call, streaming, function-calling provider implementation, or provider-specific behavior is part of this milestone.

@@ -6,7 +6,7 @@ from enum import StrEnum
 from types import MappingProxyType
 from typing import Any
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from xuanmoney.agent.state import FinanceAgentState
 from xuanmoney.domain import (
@@ -45,17 +45,21 @@ class ToolInvocationError(RuntimeError):
 
 
 class AnalyzeFinancialsRequest(BaseModel):
-    query: str
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field(min_length=1)
     current: IncomeStatement
     previous: IncomeStatement | None = None
     balance_sheet: BalanceSheet | None = None
 
 
 class AnalyzeDimensionRequest(BaseModel):
-    rows: list[DimensionalRow]
-    dimension: str
-    current_period: str
-    previous_period: str | None = None
+    model_config = ConfigDict(extra="forbid")
+
+    rows: list[DimensionalRow] = Field(min_length=1)
+    dimension: str = Field(min_length=1)
+    current_period: str = Field(min_length=1)
+    previous_period: str | None = Field(default=None, min_length=1)
 
 
 class ToolMetadata(BaseModel):
@@ -93,12 +97,16 @@ class _ToolSpec:
 
 def _run_financial_analysis(request: BaseModel) -> BaseModel:
     typed = AnalyzeFinancialsRequest.model_validate(request)
-    return analyze_financials(
+    result = analyze_financials(
         query=typed.query,
         current=typed.current,
         previous=typed.previous,
         balance_sheet=typed.balance_sheet,
     )
+    if result.phase.value == "failed":
+        details = "; ".join(result.errors) if result.errors else "unspecified analysis failure"
+        raise ValueError(details)
+    return result
 
 
 def _run_dimensional_analysis(request: BaseModel) -> BaseModel:

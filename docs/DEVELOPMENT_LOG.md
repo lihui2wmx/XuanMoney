@@ -105,6 +105,38 @@ BoundedModelRuntime
 
 Final PR head `6e204f11fee6a887580b9b4b06d2538831c6bbe8` passed GitHub-hosted PR CI #130. PR #6 was squash-merged to `main` at `c8f18f93b72cd0f4462e0f94a2cbbaebcdafa305`.
 
-### Next boundary
+## 2026-09-02 — ModelPort Provider Bridge v0.1
 
-The next bounded implementation should be a provider-independent `ModelPort` -> `ModelProvider` bridge with deterministic fake-provider tests. It must preserve all existing runtime fail-closed behavior and must not introduce a real provider SDK in the same increment.
+Status: **ACTIVE — implementation and deterministic bridge tests complete; documentation/integration review pending**
+
+Branch: `feat/model-port-provider-bridge-v0.1`
+
+Implemented:
+
+- `ModelPortProviderBridge` implementing the existing `ModelPort.plan()` and `ModelPort.synthesize()` methods over an injected `ModelProvider`;
+- provider-neutral phase translation for typed `PlanningRequest` and `SynthesisRequest` values;
+- response JSON Schema included in transport context for each phase;
+- exactly one `ModelProvider.complete()` call for each reached phase;
+- JSON decoding of `ModelResponse.content` without moving planner/synthesis semantic validation out of `BoundedModelRuntime`;
+- complete `BoundedModelRuntime` execution through a deterministic fake provider;
+- preservation of existing `invalid_plan` behavior for decoded-but-invalid planner output;
+- terminal, no-retry behavior for malformed provider JSON and provider exceptions;
+- confirmation that provider exception diagnostics remain sanitized by the existing runtime boundary;
+- terminal synthesis transport failure without retry;
+- no changes to Finance Kernel, controlled tool registry, runtime execution sequence, or financial write boundary.
+
+Code/test anchor `43b14f3a43bac781d83a984cccc916349a080e6d` passed push CI #141 on the official GitHub-hosted `ubuntu-latest` runner.
+
+### Bridge boundary
+
+```text
+BoundedModelRuntime
+        -> ModelPort
+        -> ModelPortProviderBridge
+        -> ModelProvider
+        -> provider adapter (future real implementation)
+```
+
+The bridge owns only typed request translation and provider response JSON decoding. `BoundedModelRuntime` continues to own planner/synthesis validation, tool enforcement, terminal failure classification, and provider exception sanitization.
+
+No real provider SDK, credentials, network call, hidden retry, new tool, filesystem/SQL/Python/shell path, or financial write capability is included.

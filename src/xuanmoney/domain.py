@@ -38,6 +38,8 @@ class Evidence(BaseModel):
     field: str
     period: str
     value: Decimal
+    dimension: str | None = None
+    member: str | None = None
 
 
 class MetricResult(BaseModel):
@@ -78,6 +80,63 @@ class ValidationResult(BaseModel):
     name: str
     passed: bool
     details: str
+
+
+class DimensionalRow(BaseModel):
+    period: str
+    dimension: str
+    member: str
+    currency: str = "CNY"
+    source: str = "dimensional"
+    revenue: Decimal
+    cogs: Decimal
+
+
+class DimensionalMemberMetrics(BaseModel):
+    period: str
+    dimension: str
+    member: str
+    currency: str = "CNY"
+    revenue: Decimal
+    cogs: Decimal
+    gross_profit: Decimal
+    gross_margin: Decimal | None
+    evidence: list[Evidence] = Field(default_factory=list)
+
+
+class DimensionalMemberContribution(BaseModel):
+    member: str
+    revenue_change: Decimal
+    cogs_change: Decimal
+    gross_profit_change: Decimal
+    evidence: list[Evidence] = Field(default_factory=list)
+
+
+class DimensionalVarianceResult(BaseModel):
+    dimension: str
+    current_period: str
+    previous_period: str
+    total_gross_profit_change: Decimal
+    member_contributions: list[DimensionalMemberContribution] = Field(default_factory=list)
+    reconciliation_difference: Decimal
+
+    @property
+    def reconciled(self) -> bool:
+        return self.reconciliation_difference == 0
+
+
+class DimensionalAnalysisResult(BaseModel):
+    dimension: str
+    current_period: str
+    previous_period: str | None = None
+    current_members: list[DimensionalMemberMetrics] = Field(default_factory=list)
+    previous_members: list[DimensionalMemberMetrics] = Field(default_factory=list)
+    variance: DimensionalVarianceResult | None = None
+    validations: list[ValidationResult] = Field(default_factory=list)
+
+    @property
+    def validation_passed(self) -> bool:
+        return all(item.passed for item in self.validations)
 
 
 class Finding(BaseModel):

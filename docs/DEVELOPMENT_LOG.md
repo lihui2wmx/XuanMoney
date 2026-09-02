@@ -17,81 +17,60 @@ Established the repository baseline and the first deterministic, read-only finan
 
 Status: **COMPLETE**
 
-Added:
-
-- explicit Chinese/English semantic aliases;
-- fail-closed required/duplicate/ambiguous field handling;
-- CSV/XLSX ingestion using `openpyxl`;
-- deterministic decimal parsing;
-- file/worksheet/row provenance;
-- repository-native AI handoff (`AGENTS.md`, `docs/AI_WORKFLOW.md`, `docs/HANDOFF.md`);
-- open-source contribution guidance and PR template;
-- GitHub-hosted runner policy and hardened CI.
+Added explicit semantic aliases, fail-closed CSV/XLSX ingestion, deterministic decimal parsing, provenance, repository-native AI handoff, contribution guidance, and hardened GitHub-hosted CI.
 
 ## 2026-09-02 — Profit Bridge v0.1
 
 Status: **COMPLETE — merged via PR #1**
 
-Added deterministic net-profit change decomposition:
-
-- signed revenue/COGS/expense/other-income/tax contributions;
-- exact `Decimal` reconciliation to net-profit change;
-- bridge validation and provenance;
-- service-level integration and tests.
-
-PR #1 also established Apache License 2.0 licensing. The v0.1 deterministic core was squash-merged to `main` at `d65aeda6f0e22319768d0a8213f8c73fd7436eec` after successful GitHub-hosted CI.
+Added deterministic net-profit change decomposition with exact `Decimal` reconciliation, validation, provenance, and service-level tests. PR #1 also established Apache License 2.0 licensing and was squash-merged to `main` at `d65aeda6f0e22319768d0a8213f8c73fd7436eec`.
 
 ## 2026-09-02 — Dimensional Analysis v0.1
 
 Status: **COMPLETE — merged via PR #3**
 
-Implemented:
-
-- typed `DimensionalRow`, member metrics, contribution, variance, and analysis result contracts;
-- explicit semantic mapping for `period`, `dimension`, `member`, `currency`, `revenue`, and `cogs`;
-- CSV/XLSX dimensional ingestion with source provenance;
-- deterministic aggregation by one `(period, dimension, member)` hierarchy level;
-- member revenue, COGS, gross profit, and gross margin;
-- zero-revenue gross margin represented as undefined;
-- period comparison across the union of members, including new/disappearing members;
-- exact member gross-profit contribution reconciliation to dimension total;
-- fail-closed mixed-currency comparison without an FX policy;
-- deterministic `analyze_dimension` service boundary without an LLM;
-- tests for aggregation, provenance, semantic mapping, CSV/XLSX, zero revenue, new/disappearing members, reconciliation, missing semantics, and currency mismatch.
-
-Draft PR #2 was closed unmerged only because the connected GitHub GraphQL action failed when changing draft status. The same branch and code boundary were re-opened as non-draft PR #3. Final push/PR checks passed on GitHub-hosted `ubuntu-latest`, and PR #3 was squash-merged to `main` at `6e7334c3fbd576c7f6657ca8f5b70a6a0ceb193c`.
-
-### Boundary
-
-This milestone remains single-dimensional and read-only. It does not implement multi-dimensional OLAP, causal inference, forecasting, LLM planning, database access, UI, ERP integration, or financial write actions.
+Added explicit one-dimensional ingestion, deterministic member aggregation, member revenue/COGS/gross-profit/gross-margin metrics, new/disappearing member comparison, exact contribution reconciliation, provenance, mixed-currency fail-closed behavior, and `analyze_dimension`. PR #3 was squash-merged to `main` at `6e7334c3fbd576c7f6657ca8f5b70a6a0ceb193c` after successful GitHub-hosted CI.
 
 ## 2026-09-02 — Controlled Analysis Tools v0.1
 
-Status: **ACTIVE — implementation complete, documentation/PR verification pending**
+Status: **COMPLETE — merged via PR #4**
 
-Branch: `feat/controlled-analysis-tools-v0.1`
+Implemented the fixed read-only model-callable boundary:
 
-Implemented a fixed future model-callable boundary over the deterministic services:
-
-- `AnalysisToolRegistry` with no public dynamic `register()` API;
+- immutable `AnalysisToolRegistry` without a public dynamic `register()` API;
 - model-callable tools limited to `analyze_financials` and `analyze_dimension`;
-- `ToolRisk.READ_ONLY` classification enforced at registry construction;
-- Pydantic request and response models with exported JSON Schema metadata;
-- `extra="forbid"` on tool request envelopes;
-- fixed failure codes: `unknown_tool`, `invalid_request`, `execution_failed`, `invalid_response`;
-- validation errors omit raw input values from structured error details;
+- enforced `ToolRisk.READ_ONLY`;
+- Pydantic request/response contracts and JSON Schema metadata;
+- `extra="forbid"` request envelopes;
+- stable tool failures for unknown tool, invalid request, execution failure, and invalid response;
+- raw request input omitted from structured validation errors;
 - service/domain failures normalized through `ToolInvocationError` / `ToolFailure`;
-- response-model validation before tool results are returned;
-- application file loaders, SQL, Python/shell execution, dynamic imports, and financial write operations excluded from the model-callable registry;
-- tests for registry contents, metadata, successful finance/dimensional invocation, unknown tools, filesystem-tool exclusion, request validation, extra parameters, and execution failures;
-- `docs/TOOLS.md` defining the model/tool trust boundary.
+- filesystem loaders, SQL, Python/shell execution, dynamic imports, and financial writes excluded from the model-callable surface;
+- `docs/TOOLS.md` documenting the trust boundary.
 
-The initial implementation and subsequent tightened request/failure contract both passed core tests on the official GitHub-hosted `ubuntu-latest` runner before final documentation updates.
+Final push and PR checks passed on GitHub-hosted `ubuntu-latest`. PR #4 was squash-merged to `main` at `9934248ade818b66ff14f385ee8063f0791ce837`.
 
-### Current boundary
+## 2026-09-02 — Bounded Model Runtime v0.1
 
-No external LLM/provider SDK is part of this milestone. The registry is the deterministic contract that any future planner must use.
+Status: **ACTIVE — implementation and runtime-boundary tests complete; documentation synchronization/final CI pending**
 
-### Next recommended increment after integration
+Branch: `feat/bounded-model-runtime-v0.1`
 
-Add a **provider-independent bounded model port and single-step planner/synthesizer runtime**. Test it first with deterministic fake models. Do not connect an external LLM provider until the runtime proves it cannot bypass the controlled registry or enter an open-ended autonomous loop.
+Implemented:
+
+- provider-independent `ModelPort` with separate `plan` and `synthesize` methods;
+- typed `PlanningRequest`, `PlannerDecision`, `ToolCallPlan`, `NoToolPlan`, `SynthesisRequest`, and `SynthesisOutput` contracts;
+- `BoundedModelRuntime` enforcing one plan, at most one registered tool invocation, and one synthesis;
+- fail-closed unknown-tool behavior through the existing controlled registry;
+- terminal behavior for invalid arguments, tool execution failure, planner failure, and synthesis failure;
+- no retry loop, ReAct loop, SQL/Python fallback, filesystem fallback, or alternate execution path;
+- provider exception normalization that does not expose provider exception text in runtime results;
+- whitespace-only planner reasons and synthesis answers rejected;
+- deterministic `FakeModel` tests for successful flow and all major failure paths;
+- `docs/RUNTIME.md` defining the provider/runtime trust boundary.
+
+Runtime code and tightened safety tests passed GitHub-hosted CI at `e8ac6c6d06d2b33a8dd7fe8627f1b80301940f7c`. A subsequent documentation-only `docs/RUNTIME.md` commit advanced the branch to `e288700c540e538fe0246ce4cda5455956b314ba`; current documentation synchronization commits require final current-head CI verification.
+
+### Boundary
+
+No external LLM/provider SDK is integrated. The next integration must preserve the current runtime invariant rather than adding autonomous loops or hidden provider behavior.

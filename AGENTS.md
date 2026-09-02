@@ -40,27 +40,29 @@ This repository is the source of truth for implementation decisions. AI agents m
 22. `BoundedModelRuntime` depends on the existing `ModelPort`. Lower-level provider transport must remain behind an explicit, tested `ModelPort` bridge.
 23. The provider bridge may translate typed runtime requests and decode provider transport responses, but runtime-owned validation of planner/synthesis semantics must not migrate into the bridge.
 24. `xuanmoney.model` is the lower-level provider transport package and must not depend on `xuanmoney.runtime`; runtime-owned bridge code may depend downward on `xuanmoney.model`.
+25. Provider configuration must not serialize, log, or embed secret credential values. Any real provider network integration requires explicit configuration, credential-reference, timeout, failure-redaction, and observability policy before SDK code is added.
 
 ## Current milestone
 
-`ModelPort Provider Bridge v0.1`: a provider-independent bridge implementing the runtime-facing `ModelPort` over the lower-level `ModelProvider` transport contract.
+`ModelPort Provider Bridge v0.1`: **COMPLETE — merged via PR #8**.
 
-## Exit conditions for the current milestone
+The bridge now provides the tested dependency path:
 
-- `ModelPortProviderBridge` implements `plan(PlanningRequest)` and `synthesize(SynthesisRequest)` over an injected `ModelProvider`;
-- the bridge lives at the runtime boundary so dependency direction remains `runtime -> model transport`, never `model transport -> runtime`;
-- planning and synthesis each produce exactly one typed `ModelRequest` with an explicit phase, serialized typed runtime request, and response JSON Schema;
-- provider response content is decoded as JSON and returned as an untrusted object for existing runtime-owned validation;
-- the bridge does not invoke financial tools, alter tool selection, validate financial semantics, retry provider calls, or provide fallback execution paths;
-- a complete `BoundedModelRuntime` run succeeds through the bridge using a deterministic fake provider;
-- invalid structured planner output still normalizes to the existing `invalid_plan` runtime failure;
-- malformed provider JSON and provider exceptions fail terminally without retry and are sanitized by the existing runtime failure boundary;
-- synthesis transport failure also terminates without retry;
-- tests verify phase translation and exactly one provider call per reached model phase;
-- no external LLM/provider SDK, credentials, network call, streaming, function-calling implementation, filesystem access, SQL/Python execution, dynamic tool registration, new financial tool, or financial write path is introduced;
-- the existing runtime invariant remains `single plan -> at most one registered tool -> single synthesis -> terminal`;
-- CI passes on a GitHub-hosted runner;
-- architecture, runtime/provider docs, development log, canonical handoff, and integration PR reflect the implemented and verified state.
+```text
+BoundedModelRuntime
+  -> ModelPort
+  -> ModelPortProviderBridge
+  -> ModelProvider
+  -> provider adapter (future)
+```
+
+Completed properties include runtime-owned validation, one provider call per reached phase, strict JSON decoding, no retry/fallback, package dependency direction `runtime -> model transport`, and no execution-surface expansion.
+
+## Next recommended milestone
+
+`Provider Configuration & Safety Contract v0.1`: define provider-neutral non-secret configuration, credential references, bounded timeout/no-retry behavior, safe provider failure taxonomy/redaction, and deterministic tests **before** adding a real provider SDK or network call.
+
+Do not combine that contract milestone with OpenAI/Anthropic/Gemini SDK integration.
 
 ## Canonical next action
 

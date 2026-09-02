@@ -2,7 +2,7 @@
 
 ## 2026-09-02 — Project bootstrap
 
-Status: **ACTIVE — Finance Agent v0.1**
+Status: **COMPLETE**
 
 Established an empty-repository baseline and created `feat/finance-agent-v0.1`.
 
@@ -22,7 +22,7 @@ No LLM integration, database access, Excel ingestion, UI, ERP integration, or fi
 
 ## 2026-09-02 — Normalized tabular ingestion and AI handoff workflow
 
-Status: **ACTIVE — verification pending final CI**
+Status: **COMPLETE**
 
 Implemented the next bounded data-access slice:
 
@@ -44,10 +44,25 @@ Integrated a repository-native development workflow so work can be resumed witho
 - documented GitHub-hosted runner policy;
 - hardened core CI with read-only permissions and a timeout.
 
+The ingestion/workflow slice was exercised successfully by GitHub Actions on the official GitHub-hosted `ubuntu-latest` runner before the next code increment began.
+
+## 2026-09-02 — Profit Bridge v0.1
+
+Status: **ACTIVE — final branch CI verification pending**
+
+Implemented deterministic net-profit change decomposition for the simplified v0.1 income statement:
+
+- signed contributions for revenue, COGS, operating expenses, other income, other expenses, and taxes;
+- exact `Decimal` reconciliation to period-over-period net-profit change;
+- explicit reconciliation result and validator;
+- provenance for both comparison periods on every bridge contribution;
+- service-level integration into `AnalysisResult`;
+- tests for contribution signs, cost/expense decreases, provenance, tamper detection, and service integration.
+
 ### Current boundary
 
-Still no LLM integration, database access, UI, ERP integration, or financial write action. Semantic mapping remains explicit and deterministic.
+Still no LLM integration, database access, UI, ERP integration, or financial write action. Profit attribution is limited to deterministic line-item bridge decomposition; it does not yet claim causal business root-cause analysis.
 
 ### Next recommended increment
 
-Implement **Profit Bridge v0.1** over the normalized `IncomeStatement`: deterministic contribution decomposition of period-to-period net-profit change with exact reconciliation and evidence. See `docs/HANDOFF.md` for exit conditions and non-goals.
+Add **Dimensional Analysis v0.1** for a narrow business dataset with `period`, `dimension`, `member`, `revenue`, and `cogs`, then support deterministic drill-down of revenue/gross-profit variance by one dimension at a time. Do not add an LLM yet. See `docs/HANDOFF.md` for the canonical boundary after final verification.

@@ -29,19 +29,24 @@ INCOME_STATEMENT_FIELDS: tuple[SemanticField, ...] = (
     SemanticField("taxes", ("taxes", "income_tax", "所得税", "所得税费用")),
 )
 
+DIMENSIONAL_FIELDS: tuple[SemanticField, ...] = (
+    SemanticField("period", ("period", "accounting_period", "期间", "会计期间", "月份"), True),
+    SemanticField("dimension", ("dimension", "dimension_name", "维度", "维度名称"), True),
+    SemanticField("member", ("member", "dimension_member", "成员", "维度成员"), True),
+    SemanticField("currency", ("currency", "币种")),
+    SemanticField("revenue", ("revenue", "operating_revenue", "营业收入", "销售收入"), True),
+    SemanticField("cogs", ("cogs", "cost_of_goods_sold", "operating_cost", "营业成本", "销售成本"), True),
+)
+
 
 class SemanticMappingError(ValueError):
     pass
 
 
-def resolve_income_statement_columns(headers: Iterable[str]) -> dict[str, str]:
-    """Resolve source headers to the canonical v0.1 income-statement schema.
-
-    Mapping is deliberately explicit. Unknown headers are ignored; ambiguous aliases,
-    duplicate normalized headers, and missing required fields fail closed rather than
-    being guessed by an LLM.
-    """
-
+def _resolve_columns(
+    headers: Iterable[str],
+    fields: tuple[SemanticField, ...],
+) -> dict[str, str]:
     source_headers = [str(header) for header in headers]
     normalized_sources: dict[str, list[str]] = {}
     for header in source_headers:
@@ -56,7 +61,7 @@ def resolve_income_statement_columns(headers: Iterable[str]) -> dict[str, str]:
         raise SemanticMappingError(f"duplicate normalized source columns: {duplicates}")
 
     resolved: dict[str, str] = {}
-    for field in INCOME_STATEMENT_FIELDS:
+    for field in fields:
         matches: list[str] = []
         for alias in field.aliases:
             matches.extend(normalized_sources.get(_normalize_header(alias), []))
@@ -73,3 +78,25 @@ def resolve_income_statement_columns(headers: Iterable[str]) -> dict[str, str]:
             )
 
     return resolved
+
+
+def resolve_income_statement_columns(headers: Iterable[str]) -> dict[str, str]:
+    """Resolve source headers to the canonical v0.1 income-statement schema.
+
+    Mapping is deliberately explicit. Unknown headers are ignored; ambiguous aliases,
+    duplicate normalized headers, and missing required fields fail closed rather than
+    being guessed by an LLM.
+    """
+
+    return _resolve_columns(headers, INCOME_STATEMENT_FIELDS)
+
+
+def resolve_dimensional_columns(headers: Iterable[str]) -> dict[str, str]:
+    """Resolve source headers to the canonical one-dimensional business schema.
+
+    The source must carry explicit `dimension` and `member` columns. A column such as
+    `product` or `department` is not silently interpreted as a dimension because that
+    would move business semantics into heuristic or model-defined inference.
+    """
+
+    return _resolve_columns(headers, DIMENSIONAL_FIELDS)

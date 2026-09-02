@@ -43,11 +43,9 @@ PR #1 also established Apache License 2.0 licensing. The v0.1 deterministic core
 
 ## 2026-09-02 — Dimensional Analysis v0.1
 
-Status: **ACTIVE — implementation complete, final PR verification pending**
+Status: **COMPLETE — merged via PR #3**
 
-Branch: `feat/dimensional-analysis-v0.1`
-
-Implemented the next bounded read-only slice:
+Implemented:
 
 - typed `DimensionalRow`, member metrics, contribution, variance, and analysis result contracts;
 - explicit semantic mapping for `period`, `dimension`, `member`, `currency`, `revenue`, and `cogs`;
@@ -61,12 +59,39 @@ Implemented the next bounded read-only slice:
 - deterministic `analyze_dimension` service boundary without an LLM;
 - tests for aggregation, provenance, semantic mapping, CSV/XLSX, zero revenue, new/disappearing members, reconciliation, missing semantics, and currency mismatch.
 
-The code-and-test slice passed GitHub Actions on the official GitHub-hosted `ubuntu-latest` runner at `1b5b359577d5d52212cda614f7ee2106accbffe9`; an additional XLSX provenance test and documentation updates followed and require final branch/PR verification.
+Draft PR #2 was closed unmerged only because the connected GitHub GraphQL action failed when changing draft status. The same branch and code boundary were re-opened as non-draft PR #3. Final push/PR checks passed on GitHub-hosted `ubuntu-latest`, and PR #3 was squash-merged to `main` at `6e7334c3fbd576c7f6657ca8f5b70a6a0ceb193c`.
 
 ### Boundary
 
 This milestone remains single-dimensional and read-only. It does not implement multi-dimensional OLAP, causal inference, forecasting, LLM planning, database access, UI, ERP integration, or financial write actions.
 
+## 2026-09-02 — Controlled Analysis Tools v0.1
+
+Status: **ACTIVE — implementation complete, documentation/PR verification pending**
+
+Branch: `feat/controlled-analysis-tools-v0.1`
+
+Implemented a fixed future model-callable boundary over the deterministic services:
+
+- `AnalysisToolRegistry` with no public dynamic `register()` API;
+- model-callable tools limited to `analyze_financials` and `analyze_dimension`;
+- `ToolRisk.READ_ONLY` classification enforced at registry construction;
+- Pydantic request and response models with exported JSON Schema metadata;
+- `extra="forbid"` on tool request envelopes;
+- fixed failure codes: `unknown_tool`, `invalid_request`, `execution_failed`, `invalid_response`;
+- validation errors omit raw input values from structured error details;
+- service/domain failures normalized through `ToolInvocationError` / `ToolFailure`;
+- response-model validation before tool results are returned;
+- application file loaders, SQL, Python/shell execution, dynamic imports, and financial write operations excluded from the model-callable registry;
+- tests for registry contents, metadata, successful finance/dimensional invocation, unknown tools, filesystem-tool exclusion, request validation, extra parameters, and execution failures;
+- `docs/TOOLS.md` defining the model/tool trust boundary.
+
+The initial implementation and subsequent tightened request/failure contract both passed core tests on the official GitHub-hosted `ubuntu-latest` runner before final documentation updates.
+
+### Current boundary
+
+No external LLM/provider SDK is part of this milestone. The registry is the deterministic contract that any future planner must use.
+
 ### Next recommended increment after integration
 
-Add a **controlled typed analysis-tool interface** that exposes the existing deterministic finance and dimensional kernels as a small registry of read-only operations. Do not add free-form LLM orchestration until that tool boundary is explicit and tested.
+Add a **provider-independent bounded model port and single-step planner/synthesizer runtime**. Test it first with deterministic fake models. Do not connect an external LLM provider until the runtime proves it cannot bypass the controlled registry or enter an open-ended autonomous loop.

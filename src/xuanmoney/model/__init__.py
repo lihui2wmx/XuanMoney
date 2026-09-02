@@ -1,4 +1,4 @@
-"""Provider-neutral model contracts."""
+"""Provider-neutral model transport contracts."""
 
 from .protocol import ModelProvider
 from .schemas import ModelRequest, ModelResponse

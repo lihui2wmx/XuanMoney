@@ -2,9 +2,9 @@
 
 ## Goal
 
-XuanMoney is a trustworthy finance-analysis agent. A future model may decide which approved analysis to request and how to explain the validated result, but financial facts, formulas, semantic mappings, validation, reconciliation, evidence, and tool permissions remain deterministic.
+XuanMoney is a trustworthy finance-analysis agent. A model may choose among approved analysis tools and explain validated results, but financial facts, formulas, semantic mappings, validation, reconciliation, evidence, tool permissions, and execution policy remain deterministic.
 
-## Current data flow
+## Current data and model flow
 
 ```text
 CSV / XLSX / normalized rows
@@ -42,13 +42,31 @@ Finance Kernel                  Dimensional Kernel
             - typed request schemas
             - typed response schemas
             - stable failure contract
+                        ^
+                        |
+                BoundedModelRuntime
+          plan -> <=1 tool -> synthesize
                         |
                         v
-              Future bounded model port
+                     ModelPort
+              - plan(PlanningRequest)
+              - synthesize(SynthesisRequest)
                         |
                         v
-              Future planner/synthesizer
+              ModelPortProviderBridge
+                        |
+                        v
+                   ModelProvider
+              - complete(ModelRequest)
+                        |
+                        v
+               Provider Adapter
+                        |
+                        v
+          External model service (future)
 ```
+
+No external provider SDK or network integration is implemented in the current bridge milestone.
 
 ## Module boundaries
 
@@ -59,23 +77,37 @@ Typed financial statements, dimensional rows, evidence, metrics, contribution re
 Explicit semantic registries. Unknown or ambiguous external fields must never be promoted into canonical finance/business semantics by free-form model inference.
 
 ### `ingestion/`
-Read-only CSV/XLSX adapters owned by the application boundary. They are **not** currently model-callable tools because no model filesystem-access policy exists.
+Read-only CSV/XLSX adapters owned by the application boundary. They are **not** model-callable tools because no model filesystem-access policy exists.
 
 ### `finance/`
 Deterministic domain layer with no LLM dependency. Current capabilities include profitability metrics, period variance, balance-sheet validation, net-profit bridge decomposition, and one-dimensional gross-profit contribution analysis.
 
 ### `agent/`
-Bounded orchestration state for finance analysis. Future model/runtime components belong above the controlled tool registry and must not bypass it.
+Bounded application orchestration state for deterministic finance analysis.
 
 ### `service.py`
 Application boundaries for `analyze_financials` and `analyze_dimension`.
 
 ### `tools/`
-The only intended future model-callable boundary. `AnalysisToolRegistry` exposes a fixed code-reviewed set of read-only operations, JSON Schema metadata, typed request/response validation, and stable failure semantics. See `docs/TOOLS.md`.
+The only model-callable execution boundary. `AnalysisToolRegistry` exposes a fixed code-reviewed set of read-only operations, JSON Schema metadata, typed request/response validation, and stable failure semantics. See `docs/TOOLS.md`.
+
+### `runtime/`
+Owns model-assisted execution policy and adapters that depend on runtime contracts. `BoundedModelRuntime` performs exactly one planning call, invokes at most one registered tool, and performs one synthesis call only after successful tool execution. `ModelPortProviderBridge` also lives here because it implements the runtime-facing `ModelPort` while adapting the lower-level provider transport. Runtime validates planner/synthesis outputs and normalizes failures. See `docs/RUNTIME.md`.
+
+### `model/`
+Owns the lower-level provider-neutral transport surface only: `ModelRequest`, `ModelResponse`, `ModelProvider`, and provider adapter implementations. This package must remain independent of `xuanmoney.runtime` and financial/tool execution modules. See `docs/PROVIDER_CONTRACT.md`.
+
+Dependency direction is therefore:
+
+```text
+runtime bridge -> model provider transport
+```
+
+not the reverse.
 
 ## Controlled tool invariant
 
-The initial model-callable set is exactly:
+The model-callable set is exactly:
 
 ```text
 analyze_financials
@@ -84,29 +116,48 @@ analyze_dimension
 
 The registry does not expose filesystem loaders, SQL, Python/shell execution, dynamic imports, or write actions.
 
-Every registered tool must have:
+Every registered tool has a fixed name, read-only risk class, Pydantic request/response model, deterministic handler, and JSON Schema metadata. Unknown tools and invalid requests fail closed.
+
+A tool execution failure never authorizes the model layer, runtime, bridge, or provider to improvise an alternate execution path.
+
+## Runtime invariant
 
 ```text
-fixed name
-read_only risk class
-Pydantic request model
-Pydantic response model
-handler
-JSON Schema metadata
+single plan -> at most one registered tool -> single synthesis -> terminal
 ```
 
-Unknown tools and invalid request envelopes fail closed. Top-level extra request fields are forbidden. Handler outputs are validated before being returned.
+`BoundedModelRuntime` remains the owner of:
 
-A tool execution failure is represented through `ToolInvocationError` carrying a typed `ToolFailure` with one of:
+- validation of `PlannerDecision`;
+- enforcement of the controlled registry;
+- tool request/response validation through the registry;
+- validation of `SynthesisOutput`;
+- terminal failure classification;
+- provider exception sanitization.
+
+The bridge does not weaken or duplicate these controls.
+
+## Provider bridge invariant
+
+The bridge may only translate model I/O:
 
 ```text
-unknown_tool
-invalid_request
-execution_failed
-invalid_response
+PlanningRequest
+  -> ModelRequest(phase=planning, request, response_schema)
+  -> ModelProvider.complete()
+  -> JSON decode
+  -> untrusted object
+  -> runtime validation
+
+SynthesisRequest
+  -> ModelRequest(phase=synthesis, request, response_schema)
+  -> ModelProvider.complete()
+  -> JSON decode
+  -> untrusted object
+  -> runtime validation
 ```
 
-A future model must not treat a tool failure as permission to improvise an unregistered execution path.
+Each reached model phase performs one provider call. Malformed JSON or provider exceptions terminate through the existing runtime exception boundary; the bridge does not retry.
 
 ## Income-statement Profit Bridge invariant
 
@@ -178,7 +229,7 @@ Transformations must not discard provenance silently.
 
 ## Trust boundaries
 
-Free-form model reasoning never defines or bypasses:
+Free-form model reasoning, provider adapters, and the provider bridge never define or bypass:
 
 - financial formulas;
 - accounting identities or reconciliation rules;
@@ -191,17 +242,16 @@ Free-form model reasoning never defines or bypasses:
 - arbitrary filesystem, SQL, Python, or shell execution;
 - financial write actions.
 
-A future LLM layer may inspect approved tool metadata, choose a registered tool, provide schema-valid arguments, and synthesize explanations over validated structured results.
-
 ## CI boundary
 
 Core CI uses GitHub-hosted runner labels only. Current Python CI runs on `ubuntu-latest` with GitHub-maintained `actions/checkout` and `actions/setup-python`. `self-hosted` runners are outside project policy.
 
 ## Next architecture increments
 
-1. bounded provider-independent model port and single-step planner/synthesizer runtime over the controlled registry;
-2. provider adapter(s) only after the model port and runtime are tested with deterministic fakes;
-3. richer validation and a more complete financial statement model;
-4. API/UI after runtime and result contracts stabilize;
-5. multi-dimensional analysis only as a separate explicitly validated milestone;
-6. financial write capabilities only under a separate authorization/approval/audit milestone.
+1. integrate and review `ModelPort Provider Bridge v0.1` using deterministic fake providers only;
+2. add a first real provider adapter only as a separate milestone after the bridge is integrated and re-verified;
+3. define provider configuration/credential and observability policy before production network use;
+4. richer validation and a more complete financial statement model;
+5. API/UI after runtime and result contracts stabilize;
+6. multi-dimensional analysis only as a separate explicitly validated milestone;
+7. financial write capabilities only under a separate authorization/approval/audit milestone.

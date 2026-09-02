@@ -6,7 +6,8 @@ XuanMoney is an evidence-first AI finance agent project focused on trustworthy f
 
 - **LLM for bounded intent, approved tool selection, and explanation.**
 - **Deterministic code for financial calculations, semantic mapping, validation, and reconciliation.**
-- **A fixed read-only tool registry between future models and finance services.**
+- **A fixed read-only tool registry between models and finance services.**
+- **A bounded runtime owns execution policy; provider layers own model I/O only.**
 - **No unrestricted database, filesystem, Python, shell, or financial write access from the model.**
 - **Evidence-first outputs: material claims remain traceable to source data and calculations.**
 - **Fail closed on ambiguous financial semantics instead of asking an LLM to guess.**
@@ -27,9 +28,12 @@ The current read-only finance-analysis core can:
 9. reconcile member gross-profit changes to the selected dimension total across periods;
 10. validate accounting identities and deterministic reconciliations;
 11. expose `analyze_financials` and `analyze_dimension` through a fixed typed read-only tool registry;
-12. publish Pydantic JSON Schemas and stable tool failure codes for a future model adapter.
+12. publish Pydantic JSON Schemas and stable tool failure codes;
+13. execute a bounded single-plan / at-most-one-tool / single-synthesis runtime through `ModelPort`;
+14. expose a provider-neutral `ModelProvider.complete()` transport contract;
+15. bridge the runtime-facing `ModelPort` to `ModelProvider` with deterministic JSON transport while preserving runtime-owned validation.
 
-Out of scope: payments, journal posting, tax filing, ERP write-back, autonomous financial execution, unrestricted SQL, arbitrary model filesystem/code execution, model-guessed business semantics, and production authentication.
+Out of scope: payments, journal posting, tax filing, ERP write-back, autonomous financial execution, unrestricted SQL, arbitrary model filesystem/code execution, model-guessed business semantics, production authentication, and real external model-provider integration in the current milestone.
 
 ## Architecture
 
@@ -59,12 +63,24 @@ Semantic Registry + Normalized Domain Models
  Controlled Analysis Tool Registry
    - analyze_financials
    - analyze_dimension
+             ^
+             |
+      BoundedModelRuntime
              |
              v
- Future bounded model runtime
+          ModelPort
+             |
+             v
+  ModelPortProviderBridge
+             |
+             v
+       ModelProvider
+             |
+             v
+ External provider adapter (future)
 ```
 
-No external LLM/provider adapter is implemented yet. The controlled tool contract is stabilized before model integration.
+No real external LLM/provider SDK, credentials, or network call is implemented yet. The current bridge is tested with deterministic fake providers only.
 
 ## Development setup
 
@@ -137,7 +153,9 @@ Start with:
 3. [`docs/AI_WORKFLOW.md`](docs/AI_WORKFLOW.md)
 4. [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 5. [`docs/TOOLS.md`](docs/TOOLS.md)
-6. [`CONTRIBUTING.md`](CONTRIBUTING.md)
+6. [`docs/RUNTIME.md`](docs/RUNTIME.md)
+7. [`docs/PROVIDER_CONTRACT.md`](docs/PROVIDER_CONTRACT.md)
+8. [`CONTRIBUTING.md`](CONTRIBUTING.md)
 
 `docs/HANDOFF.md` is the canonical current-state checkpoint so a new AI agent or contributor can continue without previous conversation context.
 

@@ -105,6 +105,49 @@ BoundedModelRuntime
 
 Final PR head `6e204f11fee6a887580b9b4b06d2538831c6bbe8` passed GitHub-hosted PR CI #130. PR #6 was squash-merged to `main` at `c8f18f93b72cd0f4462e0f94a2cbbaebcdafa305`.
 
-### Next boundary
+## 2026-09-02 — ModelPort Provider Bridge v0.1
 
-The next bounded implementation should be a provider-independent `ModelPort` -> `ModelProvider` bridge with deterministic fake-provider tests. It must preserve all existing runtime fail-closed behavior and must not introduce a real provider SDK in the same increment.
+Status: **READY FOR INTEGRATION — integration-review corrections complete; final docs-synchronized CI pending**
+
+Branch: `feat/model-port-provider-bridge-v0.1`
+
+Integration PR: **#8 — `feat: add model port provider bridge v0.1`**
+
+Implemented:
+
+- runtime-owned `ModelPortProviderBridge` implementing `ModelPort.plan()` and `ModelPort.synthesize()` over an injected lower-level `ModelProvider`;
+- provider-neutral phase translation for typed `PlanningRequest` and `SynthesisRequest` values;
+- response JSON Schema included in transport context for each phase;
+- exactly one `ModelProvider.complete()` call for each reached phase;
+- strict JSON decoding of `ModelResponse.content`, including rejection of `NaN`, `Infinity`, and `-Infinity`;
+- planner/synthesis semantic validation remains in `BoundedModelRuntime`;
+- complete `BoundedModelRuntime` execution through a deterministic fake provider;
+- preservation of existing `invalid_plan` behavior for decoded-but-invalid planner output;
+- terminal, no-retry behavior for malformed provider JSON, non-standard JSON numbers, and provider exceptions;
+- provider exception diagnostics remain sanitized by the existing runtime boundary;
+- terminal synthesis transport failure without retry;
+- no changes to Finance Kernel, controlled tool registry, runtime execution sequence, or financial write boundary.
+
+Verification history:
+
+- `43b14f3a43bac781d83a984cccc916349a080e6d`: initial bridge implementation/tests, push CI #141 success;
+- `454ab43373592b034a8f441016009a551f5c1bbe`: initial documentation synchronization, push CI #148 success;
+- `12e20c70f9b495c6837ed9f98d3d975d8e3b06b6`: package-layering correction, PR CI #167 success;
+- `be90517c18594a4805bf506b4ce7b81cc2a538ae`: review-state synchronization, PR CI #171 success;
+- `865f753faf817a83e2a0dcd6b750396ead337583`: strict JSON transport hardening, PR CI #175 success.
+
+The first integration review found one architectural layering blocker: the bridge initially lived under `xuanmoney.model`, making the lower-level provider transport package depend upward on runtime contracts. The correction moved it to `xuanmoney.runtime.provider_bridge`, restored `xuanmoney.model` to transport-only exports, and made the dependency direction explicit as `runtime bridge -> model provider transport`.
+
+### Bridge boundary
+
+```text
+BoundedModelRuntime
+        -> ModelPort
+        -> ModelPortProviderBridge   # runtime boundary
+        -> ModelProvider             # lower-level model transport
+        -> provider adapter (future real implementation)
+```
+
+The bridge owns only typed request translation and strict provider-response JSON decoding. `BoundedModelRuntime` continues to own planner/synthesis validation, tool enforcement, terminal failure classification, and provider exception sanitization. `xuanmoney.model` remains independent of `xuanmoney.runtime`.
+
+No real provider SDK, credentials, network call, hidden retry, new tool, filesystem/SQL/Python/shell path, or financial write capability is included.

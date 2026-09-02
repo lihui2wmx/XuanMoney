@@ -23,7 +23,7 @@ This repository is the source of truth for implementation decisions. AI agents m
 5. Material agent conclusions must carry evidence that identifies source fields, periods, dimensions/members when applicable, and available provenance.
 6. The project remains read-only. Do not add payment, posting, filing, deletion, unrestricted SQL, or other financial write actions without an explicit milestone change.
 7. Do not let an LLM silently define accounting formulas, metric semantics, permissions, validation rules, unknown spreadsheet mappings, or business dimensions.
-8. Any new metric, semantic mapping rule, validator, model-callable tool, runtime transition, or provider boundary requires tests covering normal and edge cases.
+8. Any new metric, semantic mapping rule, validator, model-callable tool, runtime transition, provider boundary, or provider bridge requires tests covering normal and edge cases.
 9. Prefer explicit state transitions and typed models over open-ended autonomous loops.
 10. Fail closed on ambiguous financial semantics. Unknown data must not be guessed into canonical finance fields.
 11. Record milestone-level changes in `docs/DEVELOPMENT_LOG.md`.
@@ -37,27 +37,30 @@ This repository is the source of truth for implementation decisions. AI agents m
 19. Application-owned ingestion paths are not model-callable until a separate file-access policy is implemented and reviewed.
 20. The model runtime is bounded: one planning call, at most one registered tool invocation, and one synthesis call. No autonomous retry or ReAct loop is allowed in the current architecture.
 21. Provider adapters translate model I/O only; they must not add hidden tools, hidden retries, financial rules, or alternate execution paths.
-22. `BoundedModelRuntime` depends on the existing `ModelPort`. A lower-level `ModelProvider` contract must not be described as runtime-integrated until an explicit, tested `ModelPort` bridge exists.
+22. `BoundedModelRuntime` depends on the existing `ModelPort`. Lower-level provider transport must remain behind an explicit, tested `ModelPort` bridge.
+23. The provider bridge may translate typed runtime requests and decode provider transport responses, but runtime-owned validation of planner/synthesis semantics must not migrate into the bridge.
+24. `xuanmoney.model` is the lower-level provider transport package and must not depend on `xuanmoney.runtime`; runtime-owned bridge code may depend downward on `xuanmoney.model`.
 
 ## Current milestone
 
-`Model Provider Contract v0.1`: **COMPLETE — merged via PR #6**.
+`ModelPort Provider Bridge v0.1`: a provider-independent bridge implementing the runtime-facing `ModelPort` over the lower-level `ModelProvider` transport contract.
 
-The next recommended bounded milestone is `ModelPort Provider Bridge v0.1`; it is not yet implemented. Use `docs/HANDOFF.md` for its exact starting boundary.
+## Exit conditions for the current milestone
 
-## Completed exit conditions for Model Provider Contract v0.1
-
-- typed `ModelRequest` and `ModelResponse` Pydantic contracts exist with `extra="forbid"`;
-- a provider-neutral `ModelProvider.complete(ModelRequest) -> ModelResponse` protocol exists without vendor SDK dependency;
-- a provider adapter boundary exists without financial tool access or alternate execution paths;
-- deterministic fake/echo provider tests cover successful request/response behavior and unknown-field rejection;
-- provider contract tests use typed requests and responses consistently;
-- documentation explicitly distinguishes `ModelProvider` from the existing runtime-facing `ModelPort`;
-- no claim is made that `BoundedModelRuntime` is wired to `ModelProvider` in this milestone;
-- no external LLM/provider SDK, credentials, network calls, streaming, function calling, filesystem access, SQL/Python execution, dynamic tool registration, or financial write path was introduced;
-- the existing bounded runtime invariant remains unchanged;
-- final PR CI passed on a GitHub-hosted runner;
-- `docs/PROVIDER_CONTRACT.md`, development log, canonical handoff, and PR description reflect the integrated design.
+- `ModelPortProviderBridge` implements `plan(PlanningRequest)` and `synthesize(SynthesisRequest)` over an injected `ModelProvider`;
+- the bridge lives at the runtime boundary so dependency direction remains `runtime -> model transport`, never `model transport -> runtime`;
+- planning and synthesis each produce exactly one typed `ModelRequest` with an explicit phase, serialized typed runtime request, and response JSON Schema;
+- provider response content is decoded as JSON and returned as an untrusted object for existing runtime-owned validation;
+- the bridge does not invoke financial tools, alter tool selection, validate financial semantics, retry provider calls, or provide fallback execution paths;
+- a complete `BoundedModelRuntime` run succeeds through the bridge using a deterministic fake provider;
+- invalid structured planner output still normalizes to the existing `invalid_plan` runtime failure;
+- malformed provider JSON and provider exceptions fail terminally without retry and are sanitized by the existing runtime failure boundary;
+- synthesis transport failure also terminates without retry;
+- tests verify phase translation and exactly one provider call per reached model phase;
+- no external LLM/provider SDK, credentials, network call, streaming, function-calling implementation, filesystem access, SQL/Python execution, dynamic tool registration, new financial tool, or financial write path is introduced;
+- the existing runtime invariant remains `single plan -> at most one registered tool -> single synthesis -> terminal`;
+- CI passes on a GitHub-hosted runner;
+- architecture, runtime/provider docs, development log, canonical handoff, and integration PR reflect the implemented and verified state.
 
 ## Canonical next action
 

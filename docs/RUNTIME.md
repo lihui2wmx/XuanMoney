@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The bounded runtime is the provider-independent control plane between a future model adapter and XuanMoney's controlled read-only analysis tools.
+The bounded runtime is the provider-independent control plane between model I/O and XuanMoney's controlled read-only analysis tools.
 
 Its purpose is not to create a generally autonomous agent. Its purpose is to permit a narrowly bounded model-assisted flow while keeping execution authority in deterministic, code-reviewed components.
 
@@ -55,9 +55,26 @@ plan(PlanningRequest) -> object
 synthesize(SynthesisRequest) -> object
 ```
 
-The return type is deliberately `object`. Provider adapters are not trusted to return valid structured data; runtime-owned Pydantic models validate all model output before it can influence execution or become a final answer.
+The return type is deliberately `object`. Provider-facing code is not trusted to return valid structured data; runtime-owned Pydantic models validate all model output before it can influence execution or become a final answer.
 
-No vendor SDK is part of this milestone.
+## ModelPort provider bridge
+
+`ModelPortProviderBridge` implements `ModelPort` over the lower-level provider-neutral `ModelProvider.complete(ModelRequest) -> ModelResponse` contract.
+
+For each reached phase the bridge:
+
+1. receives the typed runtime request;
+2. serializes it into a provider-neutral `ModelRequest` context with an explicit `planning` or `synthesis` phase;
+3. includes the expected response JSON Schema as provider guidance;
+4. performs exactly one `ModelProvider.complete()` call;
+5. JSON-decodes `ModelResponse.content`;
+6. returns the decoded object to `BoundedModelRuntime` for the existing runtime-owned validation.
+
+The bridge does not validate `PlannerDecision` or `SynthesisOutput`, execute tools, retry providers, or select alternate execution paths.
+
+Malformed provider JSON or a provider exception propagates out of the bridge and is normalized by the existing runtime phase boundary. Valid JSON with an invalid planner/synthesis shape is rejected by the existing runtime validation path.
+
+No vendor SDK or network provider is part of the bridge milestone.
 
 ## Planning contract
 
@@ -152,6 +169,12 @@ Provider exception strings are intentionally not copied into public `RuntimeResu
 
 Pydantic validation errors omit raw input values from structured error details.
 
+The provider bridge preserves this distinction:
+
+- provider exception or malformed transport JSON -> planner/synthesis exception;
+- decoded but structurally invalid planner/synthesis object -> invalid plan/synthesis;
+- no bridge-level retry in either case.
+
 ## Status contract
 
 A run ends in exactly one status:
@@ -168,7 +191,7 @@ There is no hidden continuation after one of these terminal states.
 
 ## Testing policy
 
-The runtime is tested first with deterministic fake models.
+The runtime and bridge are tested with deterministic fakes before any real provider integration.
 
 Tests must verify at minimum:
 
@@ -179,23 +202,26 @@ Tests must verify at minimum:
 - no synthesis after no-tool, planning failure, or tool failure;
 - unknown tool names fail closed;
 - invalid tool arguments fail closed;
-- planner/synthesizer structured outputs are validated;
+- planner/synthesizer structured outputs are validated by the runtime;
 - whitespace-only structured strings are rejected where required;
 - provider exceptions do not leak their raw messages into `RuntimeResult`;
-- no automatic retry/fallback behavior is introduced.
+- no automatic retry/fallback behavior is introduced;
+- the bridge makes exactly one provider call for each reached phase;
+- a complete runtime run works through a deterministic fake provider;
+- malformed provider JSON and provider exceptions terminate without bridge-level retry.
 
-Provider adapter tests come later and must not weaken these runtime invariants.
+## Provider adapter rule
 
-## Future provider adapter rule
-
-A future provider adapter may translate between an external model API and `ModelPort`, but it must not:
+A future real provider adapter may sit below `ModelPortProviderBridge`, but it must not:
 
 - call XuanMoney tools directly;
-- implement its own tool retry loop;
-- bypass `AnalysisToolRegistry`;
+- implement its own autonomous tool retry loop;
+- bypass `AnalysisToolRegistry` or `BoundedModelRuntime`;
 - add hidden tools;
 - execute model-generated code;
 - alter financial formulas or semantic mappings;
 - turn arithmetic contribution results into unsupported causal claims.
 
-The runtime owns execution policy; the provider adapter owns only model I/O translation.
+Provider-specific credentials, network policy, observability/redaction, timeouts, and SDK behavior require a separate milestone and review.
+
+The runtime owns execution policy; the bridge and provider adapter own only model I/O translation.

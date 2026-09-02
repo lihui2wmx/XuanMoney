@@ -2,100 +2,95 @@
 
 ## Current status
 
-Milestone: **Dimensional Analysis v0.1**
+Milestone: **Controlled Analysis Tools v0.1**
 
-Status: **READY FOR INTEGRATION REVIEW — PR #3 open; inspect current-head checks and review state before merge**
+Status: **READY FOR INTEGRATION REVIEW — PR #4 open; inspect current-head checks and review state before merge**
 
-Development branch: `feat/dimensional-analysis-v0.1`
+Development branch: `feat/controlled-analysis-tools-v0.1`
 
-Integration PR: `#3 — feat: add one-dimensional business variance analysis`
+Integration PR: `#4 — feat: add controlled read-only analysis tool registry`
 
-PR #2 contained the same bounded change but was opened as draft. After its final head was green, the connected GitHub GraphQL action for marking it ready failed because of a schema-compatibility error. PR #2 was therefore closed unmerged and replaced by non-draft PR #3 on the same branch; this is a workflow/tooling workaround, not a code-boundary change.
-
-Base: `main` at `d65aeda6f0e22319768d0a8213f8c73fd7436eec`, which contains the squash-merged Finance Agent v0.1 core from PR #1.
+Base: `main` at `6e7334c3fbd576c7f6657ca8f5b70a6a0ceb193c`, which contains Dimensional Analysis v0.1 merged through PR #3.
 
 The project is licensed under **Apache License 2.0**.
 
-Latest fully verified branch HEAD before this handoff-only update: `f344277f3802777d5e93cb735f1cc357f9922022`.
+Latest fully verified branch HEAD before this handoff-only update: `fbaa346952ea86edea329025718cb1b9f960884c`.
 
-Both push-triggered and PR-triggered GitHub Actions checks completed successfully at that HEAD on the official GitHub-hosted `ubuntu-latest` runner. This handoff commit is documentation-only; inspect its current-head checks before integration.
+The push-triggered GitHub Actions test completed successfully at that HEAD on the official GitHub-hosted `ubuntu-latest` runner. Opening PR #4 and this handoff-only commit trigger fresh checks; inspect current-head checks before integration.
 
 ## Implemented capabilities
 
-The merged baseline already provides:
+The merged baseline provides:
 
-- deterministic income-statement profitability metrics and period variance;
+- deterministic profitability metrics and period variance;
 - exact net-profit Profit Bridge reconciliation;
 - balance-sheet identity validation;
-- explicit CSV/XLSX income-statement semantic mapping and provenance;
-- bounded read-only service/orchestration contracts;
-- repository-native AI handoff workflow.
+- explicit CSV/XLSX financial ingestion and provenance;
+- one-dimensional member aggregation and exact gross-profit contribution reconciliation;
+- bounded deterministic `analyze_financials` and `analyze_dimension` service boundaries;
+- repository-native AI handoff and Apache-2.0 open-source workflow.
 
-PR #3 adds:
+PR #4 adds the future model-callable boundary:
 
-- typed `DimensionalRow`, member metric, contribution, variance, and dimensional analysis result contracts using `Decimal`;
-- explicit semantic mapping for `period`, `dimension`, `member`, `currency`, `revenue`, and `cogs`;
-- CSV/XLSX dimensional ingestion with file/worksheet/row provenance;
-- deterministic aggregation by one selected `(period, dimension, member)` level;
-- member revenue, COGS, gross profit, and gross margin;
-- zero-revenue gross margin represented as undefined;
-- period comparison across the union of members, including new and disappearing members;
-- exact member gross-profit contribution reconciliation to the selected dimension total;
-- fail-closed mixed-currency aggregation/comparison without an FX policy;
-- deterministic `analyze_dimension` service boundary without an LLM;
-- tests covering aggregation, provenance, semantic mapping, CSV/XLSX, zero revenue, new/disappearing members, reconciliation, missing semantics, and currency mismatch.
+- `AnalysisToolRegistry` with a fixed code-reviewed tool set;
+- no public runtime `register()` API;
+- model-callable names limited to `analyze_financials` and `analyze_dimension`;
+- `ToolRisk.READ_ONLY` enforced for registered operations;
+- typed Pydantic request/response contracts;
+- JSON Schema metadata for future model adapters;
+- top-level request envelopes with `extra="forbid"`;
+- stable failure codes: `unknown_tool`, `invalid_request`, `execution_failed`, `invalid_response`;
+- validation details with raw input values omitted;
+- normalization of service/domain failures through `ToolInvocationError` / `ToolFailure`;
+- response validation before tool results are returned;
+- tests for successful invocation, schema metadata, unknown tools, extra parameters, filesystem-tool exclusion, request errors, and execution failures;
+- `docs/TOOLS.md` defining the tool trust boundary.
 
-## Dimensional contract
+## Model-callable contract
 
-Canonical source fields:
-
-```text
-period
-dimension
-member
-currency   # optional; defaults to CNY
-revenue
-cogs
-```
-
-The source must explicitly carry both `dimension` and `member`. A source column named `product`, `department`, `region`, or similar is **not** silently interpreted as the dimensional contract.
-
-For a member:
+Current model-callable set:
 
 ```text
-gross_profit = revenue - cogs
-gross_margin = gross_profit / revenue
+analyze_financials
+analyze_dimension
 ```
 
-`gross_margin` is undefined when `revenue == 0`.
-
-For period comparison:
+Explicitly **not** model-callable:
 
 ```text
-member_gross_profit_change = Δmember_revenue - Δmember_cogs
+load_income_statements
+load_dimensional_rows
+filesystem paths
+SQL/database access
+Python/shell execution
+dynamic imports
+dynamic tool registration
+ERP/bank/tax integrations
+financial write operations
 ```
 
-A member absent from one period is treated as zero in that period so new/disappearing members remain visible. The sum of member gross-profit changes must reconcile exactly to the selected dimension's total gross-profit change under `Decimal` arithmetic.
+Application-owned ingestion remains outside the model-callable registry until a separate file-access policy is designed and reviewed.
 
-This is deterministic arithmetic contribution analysis, **not causal root-cause inference**.
+Tool failure does not authorize fallback to an unregistered capability.
 
 ## Trust boundary
 
 The project remains read-only. Do not add or infer:
 
-- payments or bank transfers;
+- payment or bank-transfer execution;
 - journal posting or ERP write-back;
 - tax filing;
 - deletion/update of financial records;
 - unrestricted SQL;
-- model-defined accounting formulas or metric semantics;
-- model-guessed spreadsheet or business-dimension semantics;
+- arbitrary Python/shell execution;
+- model-defined formulas, metric semantics, spreadsheet semantics, or business dimensions;
+- runtime tool creation/import;
 - implicit multi-dimensional cube behavior;
 - causal claims from arithmetic contribution alone;
 - automatic FX conversion without an explicit policy;
-- autonomous financial actions.
+- open-ended autonomous agent loops.
 
-An LLM may be introduced later only above controlled deterministic tools and validators.
+No external LLM/provider is integrated in PR #4.
 
 ## Verification
 
@@ -113,71 +108,85 @@ CI policy:
 - no `self-hosted` runner;
 - checkout/runtime setup uses GitHub-maintained actions.
 
-Verified code/documentation anchor before this handoff update:
+Verified anchor before this handoff update:
 
 ```text
-f344277f3802777d5e93cb735f1cc357f9922022
+fbaa346952ea86edea329025718cb1b9f960884c
 push CI: success
-PR CI:   success
 ```
 
 ## Integration state
 
-PR #3 targets `main` from `feat/dimensional-analysis-v0.1` and is the bounded integration unit for Dimensional Analysis v0.1.
+PR #4 targets `main` from `feat/controlled-analysis-tools-v0.1` and is the bounded integration unit for Controlled Analysis Tools v0.1.
 
-A new AI agent should first inspect:
+A new AI agent should inspect:
 
-1. current PR #3 head SHA;
-2. all current-head checks/CI;
+1. current PR #4 head SHA;
+2. all current-head push/PR checks;
 3. review submissions and unresolved review threads;
 4. whether the requested action is review, integration, or further development.
 
-If this handoff-only commit is green and there are no blocking review threads, PR #3 is ready for squash integration under the existing bounded workflow.
+If current-head checks are green and there are no blocking review threads, PR #4 is ready for squash integration under the existing bounded workflow.
 
-Do not add the next tool-interface feature to PR #3.
+Do not add model-runtime/provider code to PR #4.
 
 ## Known limitations
 
-- the income-statement model remains intentionally simplified and is not complete PRC GAAP/IFRS coverage;
-- no balance-sheet CSV/XLSX ingestion exists yet;
-- no selling/admin/R&D automatic aggregation into operating expenses exists yet;
-- dimensional analysis supports one explicitly named dimension at a time only;
-- no multi-dimensional OLAP/cube query model exists;
+- the financial statement model remains intentionally simplified and is not complete PRC GAAP/IFRS coverage;
+- balance-sheet CSV/XLSX ingestion is not implemented;
+- no automatic selling/admin/R&D aggregation into operating expenses exists;
+- dimensional analysis supports one explicitly named dimension at a time;
 - no FX conversion policy exists;
-- dimensional contribution explains arithmetic member impact, not causal operational drivers;
-- no controlled tool registry, LLM planner, database, API, or UI exists yet.
+- contribution analysis is arithmetic, not causal inference;
+- filesystem ingestion is application-owned, not model-callable;
+- no provider-independent model runtime exists yet;
+- no external LLM provider, database, API, or UI integration exists yet.
 
 ## Recommended next bounded action
 
-**Integrate PR #3 after current-head verification.**
+**Integrate PR #4 after current-head verification.**
 
-After PR #3 is merged, create a fresh branch from updated `main` for **Controlled Analysis Tools v0.1**.
+After PR #4 is merged, create a fresh branch from updated `main` for **Bounded Model Runtime v0.1**.
 
-### Proposed future tool increment
+### Proposed future runtime increment
 
-Expose a small typed read-only registry over existing deterministic operations. The initial model-callable registry should prefer normalized analysis inputs and avoid giving a future model arbitrary filesystem path access.
+Implement a provider-independent model port and a single-step planner/synthesizer runtime tested with deterministic fake models.
 
-Candidate operations:
+The runtime should permit only this bounded sequence:
 
 ```text
-analyze_financials
-analyze_dimension
+user query
+  -> planner sees registered tool metadata
+  -> planner selects at most one registered tool + schema-valid arguments
+  -> registry executes/validates tool
+  -> synthesizer receives query + validated tool result
+  -> final answer
 ```
 
-Application-level ingestion (`load_income_statements`, `load_dimensional_rows`) may remain outside the model-callable registry until a separate file-access policy exists.
+The runtime must enforce the tool name against the registry rather than trusting arbitrary model output.
 
-The tool layer should define explicit request/response schemas, immutable tool names, allowed operations, validation behavior, risk classification, and error contracts before any LLM planner is allowed to call it.
+### Exit conditions for the future runtime increment
 
-### Non-goals for the future tool increment
+- provider-independent planner/synthesizer protocol exists with no vendor SDK dependency;
+- planner output is typed and permits at most one tool call;
+- selected tool must exist in `AnalysisToolRegistry`;
+- tool arguments pass the existing request schema before execution;
+- tool failure terminates the bounded run rather than triggering an autonomous fallback loop;
+- synthesizer receives only the original query plus structured validated result/failure data needed for explanation;
+- deterministic fake-model tests cover valid selection, unknown tool, invalid arguments, tool execution failure, and final synthesis;
+- no open-ended ReAct loop or arbitrary retry behavior exists;
+- architecture, development log, and canonical handoff are updated.
+
+### Non-goals for the future runtime increment
 
 Do not add:
 
-- arbitrary filesystem access for model-callable tools;
+- an external LLM/provider SDK;
+- multi-step autonomous tool loops;
+- arbitrary filesystem access;
 - financial write tools;
-- unrestricted SQL;
-- free-form Python execution;
-- multi-dimensional cube behavior;
+- unrestricted SQL/Python execution;
+- multi-dimensional cubes;
 - causal inference;
 - forecasting;
-- autonomous LLM loops;
 - UI or ERP integration.

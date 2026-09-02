@@ -4,12 +4,13 @@ XuanMoney is an evidence-first AI finance agent project focused on trustworthy f
 
 ## Design principles
 
-- **LLM for intent, planning, drill-down selection, and explanation.**
-- **Deterministic code for financial calculations, semantic mapping, and validation.**
-- **Structured read-only tools for data access; no unrestricted database access from the model.**
+- **LLM for bounded intent, approved tool selection, and explanation.**
+- **Deterministic code for financial calculations, semantic mapping, validation, and reconciliation.**
+- **A fixed read-only tool registry between future models and finance services.**
+- **No unrestricted database, filesystem, Python, shell, or financial write access from the model.**
 - **Evidence-first outputs: material claims remain traceable to source data and calculations.**
 - **Fail closed on ambiguous financial semantics instead of asking an LLM to guess.**
-- **Human approval for any future high-risk financial action.**
+- **Human approval plus separate governance for any future high-risk financial action.**
 
 ## Current capabilities
 
@@ -25,19 +26,20 @@ The current read-only finance-analysis core can:
 8. aggregate member revenue, COGS, gross profit, and gross margin for one named dimension;
 9. reconcile member gross-profit changes to the selected dimension total across periods;
 10. validate accounting identities and deterministic reconciliations;
-11. expose the workflows through typed Python service/domain boundaries.
+11. expose `analyze_financials` and `analyze_dimension` through a fixed typed read-only tool registry;
+12. publish Pydantic JSON Schemas and stable tool failure codes for a future model adapter.
 
-Out of scope: payments, journal posting, tax filing, ERP write-back, autonomous financial execution, unrestricted SQL, model-guessed business semantics, and production authentication.
+Out of scope: payments, journal posting, tax filing, ERP write-back, autonomous financial execution, unrestricted SQL, arbitrary model filesystem/code execution, model-guessed business semantics, and production authentication.
 
 ## Architecture
 
 ```text
-CSV / XLSX / normalized input
+Application-owned CSV / XLSX ingestion
              |
              v
-Semantic Registry + Ingestion Adapter
+Semantic Registry + Normalized Domain Models
              |
-             +--> IncomeStatement analysis
+             +--> Finance analysis
              |      - profitability metrics
              |      - period variance
              |      - profit bridge
@@ -54,10 +56,15 @@ Semantic Registry + Ingestion Adapter
  Evidence-backed structured results
              |
              v
- Future controlled tool layer / LLM planner
+ Controlled Analysis Tool Registry
+   - analyze_financials
+   - analyze_dimension
+             |
+             v
+ Future bounded model runtime
 ```
 
-The LLM layer is intentionally not implemented yet. Financial facts, formulas, semantic mappings, and reconciliation are stabilized first.
+No external LLM/provider adapter is implemented yet. The controlled tool contract is stabilized before model integration.
 
 ## Development setup
 
@@ -69,8 +76,6 @@ pytest
 ```
 
 ## Income-statement ingestion
-
-Example CSV:
 
 ```csv
 period,revenue,cogs,operating_expenses,taxes
@@ -85,8 +90,6 @@ statements = load_income_statements("income.csv")
 ```
 
 ## One-dimensional business analysis
-
-The canonical dimensional contract is explicit:
 
 ```csv
 period,dimension,member,revenue,cogs
@@ -109,7 +112,21 @@ result = analyze_dimension(
 )
 ```
 
-The source must explicitly provide `dimension` and `member` semantics. A column named `product`, `department`, or similar is not silently interpreted as a dimension. Unknown columns are ignored rather than guessed.
+The source must explicitly provide `dimension` and `member` semantics. A column named `product`, `department`, or similar is not silently interpreted as a dimension.
+
+## Controlled analysis tools
+
+```python
+from xuanmoney.tools import build_analysis_tool_registry
+
+registry = build_analysis_tool_registry()
+print(registry.names())
+# ('analyze_financials', 'analyze_dimension')
+
+schemas = registry.metadata()
+```
+
+The model-callable registry deliberately excludes `load_income_statements`, `load_dimensional_rows`, SQL, Python/shell execution, dynamic imports, and financial write operations. See [`docs/TOOLS.md`](docs/TOOLS.md).
 
 ## Contributing and AI handoff
 
@@ -118,7 +135,9 @@ Start with:
 1. [`AGENTS.md`](AGENTS.md)
 2. [`docs/HANDOFF.md`](docs/HANDOFF.md)
 3. [`docs/AI_WORKFLOW.md`](docs/AI_WORKFLOW.md)
-4. [`CONTRIBUTING.md`](CONTRIBUTING.md)
+4. [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+5. [`docs/TOOLS.md`](docs/TOOLS.md)
+6. [`CONTRIBUTING.md`](CONTRIBUTING.md)
 
 `docs/HANDOFF.md` is the canonical current-state checkpoint so a new AI agent or contributor can continue without previous conversation context.
 

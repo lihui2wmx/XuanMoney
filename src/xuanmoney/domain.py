@@ -15,6 +15,7 @@ class Unit(StrEnum):
 class IncomeStatement(BaseModel):
     period: str
     currency: str = "CNY"
+    source: str = "income_statement"
     revenue: Decimal
     cogs: Decimal
     operating_expenses: Decimal = Decimal("0")
@@ -26,6 +27,7 @@ class IncomeStatement(BaseModel):
 class BalanceSheet(BaseModel):
     period: str
     currency: str = "CNY"
+    source: str = "balance_sheet"
     assets: Decimal
     liabilities: Decimal
     equity: Decimal

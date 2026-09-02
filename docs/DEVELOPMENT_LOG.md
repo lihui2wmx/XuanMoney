@@ -52,9 +52,7 @@ Final push and PR checks passed on GitHub-hosted `ubuntu-latest`. PR #4 was squa
 
 ## 2026-09-02 — Bounded Model Runtime v0.1
 
-Status: **ACTIVE — implementation and runtime-boundary tests complete; documentation synchronization/final CI pending**
-
-Branch: `feat/bounded-model-runtime-v0.1`
+Status: **COMPLETE — merged via PR #5**
 
 Implemented:
 
@@ -66,11 +64,50 @@ Implemented:
 - no retry loop, ReAct loop, SQL/Python fallback, filesystem fallback, or alternate execution path;
 - provider exception normalization that does not expose provider exception text in runtime results;
 - whitespace-only planner reasons and synthesis answers rejected;
-- deterministic `FakeModel` tests for successful flow and all major failure paths;
-- `docs/RUNTIME.md` defining the provider/runtime trust boundary.
+- deterministic fake-model tests for successful flow and major failure paths;
+- `docs/RUNTIME.md` defining the runtime/model trust boundary.
 
-Runtime code and tightened safety tests passed GitHub-hosted CI at `e8ac6c6d06d2b33a8dd7fe8627f1b80301940f7c`. A subsequent documentation-only `docs/RUNTIME.md` commit advanced the branch to `e288700c540e538fe0246ce4cda5455956b314ba`; current documentation synchronization commits require final current-head CI verification.
+PR #5 passed GitHub-hosted CI and was squash-merged to `main` at `d3fb61a789e70f2e4029605462a294543e6fdc39`.
+
+### Runtime invariant
+
+```text
+single plan -> at most one registered tool -> single synthesis -> terminal
+```
+
+No external LLM/provider SDK was added.
+
+## 2026-09-02 — Model Provider Contract v0.1
+
+Status: **ACTIVE — contract implementation complete; integration-review corrections applied; current-head CI pending**
+
+Branch: `feat/model-provider-contract-v0.1`
+
+Integration PR: **#6 — `feat: establish model provider contract v0.1`**
+
+Implemented:
+
+- typed `ModelRequest` and `ModelResponse` contracts with `extra="forbid"`;
+- provider-neutral `ModelProvider.complete(ModelRequest) -> ModelResponse` protocol;
+- `BaseModelAdapter` provider implementation boundary;
+- deterministic `EchoModelAdapter` used only for tests;
+- contract tests for typed request/response behavior and forbidden extra fields;
+- provider-boundary documentation;
+- no vendor SDK, credentials, external network call, streaming, function calling, financial tool access, or financial write path.
+
+The initial contract-test corrections reached green PR CI at `795f9a9c84040242bfb8ee562ebf90b1c75c6664` on the official GitHub-hosted runner. Integration review then identified an architectural-documentation mismatch: the existing `BoundedModelRuntime` depends on `ModelPort.plan()` / `ModelPort.synthesize()`, while this milestone introduces the lower-level `ModelProvider.complete()` transport contract. The branch was corrected to stop claiming that the runtime is already wired directly to `ModelProvider`.
 
 ### Boundary
 
-No external LLM/provider SDK is integrated. The next integration must preserve the current runtime invariant rather than adding autonomous loops or hidden provider behavior.
+Current intended layering is:
+
+```text
+BoundedModelRuntime
+        -> ModelPort
+        -> future bounded ModelPort/provider bridge
+        -> ModelProvider
+        -> provider adapter
+        -> external model service
+```
+
+The future bridge is explicitly out of scope for Model Provider Contract v0.1. It must be implemented and tested as a separate bounded increment before any real provider SDK is connected.

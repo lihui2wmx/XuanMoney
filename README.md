@@ -11,21 +11,23 @@ XuanMoney is an evidence-first AI finance agent project focused on trustworthy f
 - **Fail closed on ambiguous financial semantics instead of asking an LLM to guess.**
 - **Human approval for any future high-risk financial action.**
 
-## Current v0.1 capabilities
+## Current capabilities
 
-The active milestone is a read-only Finance Analysis Agent core that can:
+The current read-only finance-analysis core can:
 
 1. ingest normalized income-statement data from CSV and XLSX;
-2. map explicit Chinese/English column aliases into a canonical finance schema;
+2. map explicit Chinese/English column aliases into canonical finance schemas;
 3. preserve file/worksheet/row provenance;
 4. compute core profitability metrics with `Decimal` arithmetic;
 5. perform period-over-period variance analysis;
 6. decompose net-profit change with an exactly reconciled deterministic profit bridge;
-7. validate accounting identities and bridge reconciliation;
-8. produce structured findings with evidence;
-9. expose the workflow through typed Python service/domain boundaries.
+7. ingest explicit one-dimensional business rows (`period/dimension/member/revenue/cogs`);
+8. aggregate member revenue, COGS, gross profit, and gross margin for one named dimension;
+9. reconcile member gross-profit changes to the selected dimension total across periods;
+10. validate accounting identities and deterministic reconciliations;
+11. expose the workflows through typed Python service/domain boundaries.
 
-Out of scope for v0.1: payments, journal posting, tax filing, ERP write-back, autonomous financial execution, unrestricted SQL, and production authentication.
+Out of scope: payments, journal posting, tax filing, ERP write-back, autonomous financial execution, unrestricted SQL, model-guessed business semantics, and production authentication.
 
 ## Architecture
 
@@ -35,23 +37,24 @@ CSV / XLSX / normalized input
              v
 Semantic Registry + Ingestion Adapter
              |
-             v
-       FinanceAgentState
+             +--> IncomeStatement analysis
+             |      - profitability metrics
+             |      - period variance
+             |      - profit bridge
+             |
+             +--> One-dimensional business analysis
+                    - member aggregation
+                    - gross-profit / gross-margin metrics
+                    - member contribution reconciliation
              |
              v
-        Finance Kernel
-   - profitability metrics
-   - period variance
-   - profit bridge
+          Validators
              |
              v
-          Validator
+ Evidence-backed structured results
              |
              v
- Evidence-backed AnalysisResult
-             |
-             v
- Future LLM planner / synthesizer
+ Future controlled tool layer / LLM planner
 ```
 
 The LLM layer is intentionally not implemented yet. Financial facts, formulas, semantic mappings, and reconciliation are stabilized first.
@@ -65,7 +68,7 @@ python -m pip install -e ".[dev]"
 pytest
 ```
 
-## Tabular ingestion
+## Income-statement ingestion
 
 Example CSV:
 
@@ -75,15 +78,38 @@ period,revenue,cogs,operating_expenses,taxes
 2026-08,900,600,100,20
 ```
 
-Load it through the deterministic ingestion boundary:
-
 ```python
 from xuanmoney.ingestion import load_income_statements
 
 statements = load_income_statements("income.csv")
 ```
 
-Chinese headers such as `会计期间`, `营业收入`, `营业成本`, and `所得税费用` are supported only when explicitly registered in `src/xuanmoney/semantic/registry.py`. Unknown columns are not guessed into financial fields.
+## One-dimensional business analysis
+
+The canonical dimensional contract is explicit:
+
+```csv
+period,dimension,member,revenue,cogs
+2026-07,product,A,100,60
+2026-07,product,B,50,30
+2026-08,product,A,120,70
+2026-08,product,C,30,10
+```
+
+```python
+from xuanmoney.ingestion import load_dimensional_rows
+from xuanmoney.service import analyze_dimension
+
+rows = load_dimensional_rows("business.csv")
+result = analyze_dimension(
+    rows=rows,
+    dimension="product",
+    current_period="2026-08",
+    previous_period="2026-07",
+)
+```
+
+The source must explicitly provide `dimension` and `member` semantics. A column named `product`, `department`, or similar is not silently interpreted as a dimension. Unknown columns are ignored rather than guessed.
 
 ## Contributing and AI handoff
 

@@ -1,7 +1,21 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 from xuanmoney.agent.state import AgentPhase, FinanceAgentState
-from xuanmoney.domain import AnalysisResult, BalanceSheet, Finding, IncomeStatement
+from xuanmoney.domain import (
+    AnalysisResult,
+    BalanceSheet,
+    DimensionalAnalysisResult,
+    DimensionalRow,
+    Finding,
+    IncomeStatement,
+)
+from xuanmoney.finance.dimensional import (
+    aggregate_dimension,
+    compare_dimension_members,
+    validate_dimensional_variance,
+)
 from xuanmoney.finance.metrics import profitability_metrics
 from xuanmoney.finance.profit_bridge import profit_bridge, validate_profit_bridge
 from xuanmoney.finance.validation import validate_balance_sheet
@@ -84,3 +98,55 @@ def analyze_financials(
         state.phase = AgentPhase.FAILED
         state.errors.append(str(exc))
         return state
+
+
+def analyze_dimension(
+    *,
+    rows: Iterable[DimensionalRow],
+    dimension: str,
+    current_period: str,
+    previous_period: str | None = None,
+) -> DimensionalAnalysisResult:
+    """Analyze exactly one explicitly named business dimension without an LLM."""
+
+    materialized = list(rows)
+    current_members = aggregate_dimension(
+        materialized,
+        period=current_period,
+        dimension=dimension,
+    )
+    if not current_members:
+        raise ValueError(
+            f"no rows found for dimension {dimension!r} in current period {current_period!r}"
+        )
+
+    if previous_period is None:
+        return DimensionalAnalysisResult(
+            dimension=dimension,
+            current_period=current_period,
+            current_members=current_members,
+        )
+
+    previous_members = aggregate_dimension(
+        materialized,
+        period=previous_period,
+        dimension=dimension,
+    )
+    variance = compare_dimension_members(
+        dimension=dimension,
+        current_period=current_period,
+        previous_period=previous_period,
+        current=current_members,
+        previous=previous_members,
+    )
+    validation = validate_dimensional_variance(variance)
+
+    return DimensionalAnalysisResult(
+        dimension=dimension,
+        current_period=current_period,
+        previous_period=previous_period,
+        current_members=current_members,
+        previous_members=previous_members,
+        variance=variance,
+        validations=[validation],
+    )

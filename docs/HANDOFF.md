@@ -4,7 +4,7 @@
 
 Milestone: **ModelPort Provider Bridge v0.1**
 
-Status: **READY FOR SECOND INTEGRATION REVIEW — first review blocker corrected; final current-head CI pending**
+Status: **READY FOR INTEGRATION — review blockers resolved; final docs-synchronized CI pending**
 
 Development branch: `feat/model-port-provider-bridge-v0.1`
 
@@ -16,7 +16,7 @@ The project is licensed under **Apache License 2.0**.
 
 ## Implemented bridge
 
-The branch closes the previously explicit gap between the runtime-facing `ModelPort` and lower-level `ModelProvider` transport contract:
+The branch closes the gap between the runtime-facing `ModelPort` and lower-level `ModelProvider` transport contract:
 
 ```text
 BoundedModelRuntime
@@ -40,10 +40,10 @@ For each reached model phase, the bridge:
 2. creates exactly one typed `ModelRequest` with an explicit `planning` or `synthesis` phase;
 3. includes the serialized runtime request and expected response JSON Schema in transport context;
 4. calls the injected `ModelProvider.complete()` exactly once;
-5. JSON-decodes `ModelResponse.content`;
+5. strictly JSON-decodes `ModelResponse.content`;
 6. returns the decoded value as an untrusted object to `BoundedModelRuntime`.
 
-The bridge deliberately does not validate `PlannerDecision` or `SynthesisOutput`. Those checks remain runtime-owned.
+Strict JSON decoding rejects malformed JSON and non-standard numeric constants (`NaN`, `Infinity`, `-Infinity`). The bridge deliberately does not validate `PlannerDecision` or `SynthesisOutput`; those checks remain runtime-owned.
 
 ## Package dependency boundary
 
@@ -51,10 +51,10 @@ The first integration review found one blocker: the initial bridge location unde
 
 That blocker is corrected:
 
-- `ModelPortProviderBridge` now lives in `xuanmoney.runtime.provider_bridge`;
+- `ModelPortProviderBridge` lives in `xuanmoney.runtime.provider_bridge`;
 - `xuanmoney.runtime` exports the bridge;
-- `xuanmoney.model` exports only `ModelProvider`, `ModelRequest`, and `ModelResponse` and remains transport-only;
-- architecture rules explicitly require `runtime bridge -> model provider transport`, never the reverse;
+- `xuanmoney.model` exports only provider transport contracts and remains independent of `xuanmoney.runtime`;
+- dependency direction is `runtime bridge -> model provider transport`, never the reverse;
 - response JSON Schemas are copied into each transport request so provider-side mutation cannot alter cached schemas for later calls.
 
 ## Preserved runtime boundary
@@ -96,21 +96,24 @@ pytest
 Verified anchors:
 
 - `43b14f3a43bac781d83a984cccc916349a080e6d`: initial implementation/bridge tests, push CI #141 **success**;
-- `454ab43373592b034a8f441016009a551f5c1bbe`: initial documentation-synchronized pre-PR head, push CI #148 **success**;
-- `12e20c70f9b495c6837ed9f98d3d975d8e3b06b6`: package-layering correction, PR CI #167 **success**.
+- `454ab43373592b034a8f441016009a551f5c1bbe`: initial documentation synchronization, push CI #148 **success**;
+- `12e20c70f9b495c6837ed9f98d3d975d8e3b06b6`: package-layering correction, PR CI #167 **success**;
+- `be90517c18594a4805bf506b4ce7b81cc2a538ae`: review-state synchronization, PR CI #171 **success**;
+- `865f753faf817a83e2a0dcd6b750396ead337583`: strict JSON transport hardening, PR CI #175 **success**.
 
-The bridge test slice covers:
+The deterministic bridge tests cover:
 
 - planning transport translation;
 - synthesis transport translation;
-- full `BoundedModelRuntime` completion through a deterministic fake provider;
+- full `BoundedModelRuntime` completion through a fake provider;
 - runtime-owned `invalid_plan` validation after bridge decoding;
 - malformed provider JSON -> terminal planner exception without retry;
+- non-standard JSON numeric constants -> terminal planner exception without retry;
 - provider exception sanitization through the runtime boundary;
 - malformed synthesis JSON -> terminal synthesis exception without retry;
 - exactly one provider call per reached phase.
 
-This final review-state development-log/handoff synchronization follows the corrected green anchor and triggers fresh current-head checks.
+This final provider-contract/development-log/handoff synchronization follows the green strict-JSON anchor and triggers fresh current-head checks. Merge remains gated on those checks.
 
 ## Scope exclusions
 
@@ -137,8 +140,8 @@ This milestone contains no:
 
 ## Recommended next bounded action
 
-**Verify current-head PR #8 CI and perform the second integration review only.**
+**Verify final current-head PR #8 CI and perform final integration review only.**
 
-The second review should confirm that the package dependency direction is corrected, runtime validation/execution policy remains in `BoundedModelRuntime`, provider calls are one-per-phase without retry, and no real provider SDK or execution-surface expansion entered the branch.
+If the final current-head checks are green, the branch remains ahead of and not behind `main`, review threads contain no blocker, and the changed-file set contains no execution-surface expansion, PR #8 is eligible for squash integration.
 
-If current-head CI is green and the second review finds no blocker, PR #8 is eligible for squash integration. Do not add a real provider adapter to PR #8.
+Do not add a real provider adapter to PR #8.

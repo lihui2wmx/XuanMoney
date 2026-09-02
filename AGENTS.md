@@ -10,8 +10,9 @@ This repository is the source of truth for implementation decisions. AI agents m
 4. `docs/ARCHITECTURE.md`
 5. `docs/TOOLS.md`
 6. `docs/RUNTIME.md`
-7. the relevant section of `docs/DEVELOPMENT_LOG.md`
-8. implementation and tests touched by the active bounded increment
+7. `docs/PROVIDER_CONTRACT.md`
+8. the relevant section of `docs/DEVELOPMENT_LOG.md`
+9. implementation and tests touched by the active bounded increment
 
 ## Working model
 
@@ -22,7 +23,7 @@ This repository is the source of truth for implementation decisions. AI agents m
 5. Material agent conclusions must carry evidence that identifies source fields, periods, dimensions/members when applicable, and available provenance.
 6. The project remains read-only. Do not add payment, posting, filing, deletion, unrestricted SQL, or other financial write actions without an explicit milestone change.
 7. Do not let an LLM silently define accounting formulas, metric semantics, permissions, validation rules, unknown spreadsheet mappings, or business dimensions.
-8. Any new metric, semantic mapping rule, validator, model-callable tool, or runtime transition requires tests covering normal and edge cases.
+8. Any new metric, semantic mapping rule, validator, model-callable tool, runtime transition, or provider boundary requires tests covering normal and edge cases.
 9. Prefer explicit state transitions and typed models over open-ended autonomous loops.
 10. Fail closed on ambiguous financial semantics. Unknown data must not be guessed into canonical finance fields.
 11. Record milestone-level changes in `docs/DEVELOPMENT_LOG.md`.
@@ -34,28 +35,27 @@ This repository is the source of truth for implementation decisions. AI agents m
 17. A model may invoke only tools explicitly present in the controlled model-callable registry. Tool failure does not authorize fallback to SQL, Python, filesystem access, or unregistered code paths.
 18. Do not add a public runtime `register()` mechanism or dynamic import path to the model-callable tool registry.
 19. Application-owned ingestion paths are not model-callable until a separate file-access policy is implemented and reviewed.
-20. The model runtime is bounded: one planning call, at most one registered tool invocation, and one synthesis call. No autonomous retry or ReAct loop is allowed in the current milestone.
+20. The model runtime is bounded: one planning call, at most one registered tool invocation, and one synthesis call. No autonomous retry or ReAct loop is allowed in the current architecture.
 21. Provider adapters translate model I/O only; they must not add hidden tools, hidden retries, financial rules, or alternate execution paths.
+22. `BoundedModelRuntime` depends on the existing `ModelPort`. A lower-level `ModelProvider` contract must not be described as runtime-integrated until an explicit, tested `ModelPort` bridge exists.
 
 ## Current milestone
 
-`Bounded Model Runtime v0.1`: a provider-independent, single-step planner/tool/synthesizer runtime over the controlled read-only analysis registry.
+`Model Provider Contract v0.1`: a provider-neutral lower-level model transport contract beneath the existing runtime-facing `ModelPort`.
 
 ## Exit conditions for the current milestone
 
-- a provider-independent `ModelPort` exists with no vendor SDK dependency;
-- planning and synthesis use typed Pydantic contracts with `extra="forbid"`;
-- planner output permits either `no_tool` or at most one tool call;
-- the selected tool is enforced against `AnalysisToolRegistry`;
-- tool arguments are validated by the existing tool request schemas;
-- tool failure terminates the run without retry or fallback;
-- synthesis occurs only after a successful validated tool result;
-- planner/provider exceptions and synthesis/provider exceptions normalize to stable runtime failures without echoing provider exception text;
-- blank/whitespace-only planner reasons and synthesis answers fail validation;
-- deterministic fake-model tests cover complete, no-tool, unknown-tool, invalid-argument, execution-failure, invalid-plan, planner-exception, invalid-synthesis, and synthesis-exception paths;
-- no external LLM/provider SDK, filesystem access, SQL/Python execution, dynamic tool registration, or financial write path is introduced;
+- typed `ModelRequest` and `ModelResponse` Pydantic contracts exist with `extra="forbid"`;
+- a provider-neutral `ModelProvider.complete(ModelRequest) -> ModelResponse` protocol exists without vendor SDK dependency;
+- a provider adapter boundary exists without financial tool access or alternate execution paths;
+- deterministic fake/echo provider tests cover successful request/response behavior and unknown-field rejection;
+- provider contract tests use typed requests and responses consistently;
+- documentation explicitly distinguishes `ModelProvider` from the existing runtime-facing `ModelPort`;
+- no claim is made that `BoundedModelRuntime` is wired to `ModelProvider` in this milestone;
+- no external LLM/provider SDK, credentials, network calls, streaming, function calling, filesystem access, SQL/Python execution, dynamic tool registration, or financial write path is introduced;
+- the existing bounded runtime invariant remains unchanged;
 - CI passes on a GitHub-hosted runner;
-- `docs/RUNTIME.md`, development log, and canonical handoff reflect the implemented and verified state.
+- `docs/PROVIDER_CONTRACT.md`, development log, canonical handoff, and PR description reflect the implemented and verified state.
 
 ## Canonical next action
 

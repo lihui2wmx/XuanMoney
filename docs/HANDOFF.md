@@ -2,122 +2,78 @@
 
 ## Current status
 
-Milestone: **Bounded Model Runtime v0.1**
+Milestone: **Model Provider Contract v0.1**
 
-Status: **IMPLEMENTATION COMPLETE — final current-head CI verification pending; no integration PR open**
+Status: **CONTRACT IMPLEMENTATION COMPLETE — awaiting integration review**
 
-Development branch: `feat/bounded-model-runtime-v0.1`
+Development branch: `feat/model-provider-contract-v0.1`
 
-Base: `main` at `9934248ade818b66ff14f385ee8063f0791ce837`, which contains Controlled Analysis Tools v0.1 merged through PR #4.
+Base: latest stable main after Bounded Model Runtime and Controlled Analysis Tools integration.
 
 The project is licensed under **Apache License 2.0**.
 
-## Implemented runtime boundary
+## Implemented boundary
 
-The branch adds a provider-independent model runtime above the existing controlled tool registry:
-
-```text
-user query
-  -> ModelPort.plan() exactly once
-  -> typed PlannerDecision
-  -> at most one AnalysisToolRegistry invocation
-  -> validated structured tool result
-  -> ModelPort.synthesize() exactly once
-  -> validated final answer
-```
-
-The runtime has no autonomous retry loop and no ReAct-style continuation.
-
-Implemented contracts and behavior include:
-
-- provider-independent `ModelPort`; no vendor SDK dependency;
-- typed planning and synthesis requests/responses with `extra="forbid"`;
-- planner decision restricted to `no_tool` or one `tool_call`;
-- tool name enforced by `AnalysisToolRegistry` rather than trusted from model output;
-- tool arguments validated through the existing tool request schema;
-- unknown tool, invalid arguments, and tool execution failure terminate the run;
-- synthesis occurs only after a successful tool result;
-- planner and synthesis provider exceptions normalize to stable failures without embedding provider exception text;
-- whitespace-only planner reasons and synthesis answers fail validation;
-- deterministic fake-model tests cover complete, no-tool, unknown-tool, invalid-argument, tool-failure, invalid-plan, planner-exception, invalid-synthesis, and synthesis-exception paths;
-- `docs/RUNTIME.md` defines the provider/runtime trust boundary.
-
-## Runtime invariant
-
-Current runtime policy is:
+The branch adds the provider-neutral model boundary above the bounded runtime:
 
 ```text
-single plan -> at most one registered tool -> single synthesis -> terminal
+BoundedModelRuntime
+        -> ModelProvider contract
+        -> Provider adapter boundary
+        -> external model implementation (future)
 ```
 
-A model/provider adapter must not:
+Implemented:
 
-- create or register hidden tools;
-- invoke SQL, Python, shell, filesystem, or dynamic imports outside the registry;
-- retry a failed tool autonomously;
-- fall back to an unregistered execution path;
-- alter financial formulas, semantic mappings, validators, or permissions;
-- perform financial write actions;
-- introduce a multi-step autonomous agent loop.
+- typed model request/response schemas;
+- provider-neutral protocol;
+- adapter boundary;
+- deterministic fake adapter for tests;
+- runtime/provider integration tests;
+- provider contract documentation.
 
-Provider adapters translate model I/O only. Execution policy remains owned by `BoundedModelRuntime` and `AnalysisToolRegistry`.
+## Current restrictions
 
-## Model-callable tools
+No external model provider exists yet.
 
-Current allowed set remains:
+Provider implementations must not:
 
-```text
-analyze_financials
-analyze_dimension
-```
+- bypass BoundedModelRuntime;
+- call financial tools directly;
+- execute SQL, Python, shell, or filesystem operations;
+- alter financial formulas or validators;
+- create hidden tools;
+- perform financial write operations.
 
-Application-owned ingestion remains outside the model-callable surface.
+The provider layer only translates model input/output. Runtime owns execution policy.
 
 ## Verification
 
-Canonical local command:
+Required local verification:
 
 ```bash
 python -m pip install -e ".[dev]"
 pytest
 ```
 
-CI policy:
+CI policy remains:
 
 - GitHub-hosted official runners only;
-- current runner: `ubuntu-latest`;
-- no `self-hosted` runner;
-- GitHub-maintained checkout/runtime setup actions.
-
-Verified runtime code/test anchor:
-
-```text
-e8ac6c6d06d2b33a8dd7fe8627f1b80301940f7c
-push CI: success
-```
-
-A documentation-only `docs/RUNTIME.md` update and the current milestone/handoff synchronization followed that verified anchor. Inspect the latest branch HEAD and its checks before opening an integration PR.
+- `ubuntu-latest`;
+- no `self-hosted` runners.
 
 ## Integration state
 
-There is currently **no PR** for Bounded Model Runtime v0.1.
+Current branch contains the Model Provider Contract v0.1 increment.
 
-Do not merge or start provider integration until the current branch HEAD has successful CI.
+Next action:
 
-## Known limitations
+1. run current-head CI;
+2. open integration PR;
+3. merge after review gate.
 
-- no external LLM/provider adapter exists;
-- no provider authentication/configuration exists;
-- no API/UI exists;
-- the financial statement model remains intentionally simplified;
-- dimensional analysis remains one dimension at a time;
-- no FX conversion policy exists;
-- application filesystem ingestion is not model-callable;
-- no unrestricted SQL/Python execution exists;
-- no financial write tools exist.
+Do not add a real model SDK in the same integration PR.
 
 ## Recommended next bounded action
 
-**Verify current-head CI only.**
-
-If the current branch HEAD is green, the next separate bounded action is to open a non-draft integration PR for **Bounded Model Runtime v0.1**. Do not implement an external model provider in that same PR.
+Create the Model Provider Contract v0.1 integration PR after CI verification.

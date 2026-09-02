@@ -4,13 +4,15 @@
 
 Milestone: **Finance Agent v0.1**
 
-Status: **ACTIVE — deterministic analysis core verified; dimensional analysis is next**
+Status: **READY FOR REVIEW — PR #1 open; do not merge implicitly**
 
 Development branch: `feat/finance-agent-v0.1`
 
-Verified code/test anchor: `4eb9e56e59ccba5527f549a6a46d8e4184e43931`
+Integration PR: `#1 — feat: establish Finance Agent v0.1 deterministic core`
 
-At that anchor, GitHub Actions completed successfully on the GitHub-hosted `ubuntu-latest` runner with the ingestion and Profit Bridge test suites present. Commits after the anchor are documentation/handoff synchronization unless repository history shows otherwise; a new agent must still inspect current HEAD and CI before changing code.
+Latest fully verified branch HEAD before this handoff-only update: `fe16fe996a3d5f216d860087a4d637bb400f6f01`
+
+GitHub Actions completed successfully at that HEAD on the GitHub-hosted `ubuntu-latest` runner. PR #1 is open and mergeable. This handoff update is documentation-only; a new agent must inspect current PR checks before any integration decision.
 
 ## Implemented capabilities
 
@@ -91,6 +93,19 @@ CI policy:
 - no `self-hosted` runner;
 - checkout/runtime setup uses GitHub-maintained actions.
 
+## Integration state
+
+PR #1 targets `main` from `feat/finance-agent-v0.1`. It is the bounded integration unit for the current v0.1 core.
+
+A new AI agent should **not** merge PR #1 merely because it is mergeable. First inspect:
+
+1. current PR head SHA;
+2. current PR checks/CI;
+3. unresolved review comments, if any;
+4. whether the requested action is review, integration, or further development.
+
+Do not add the next dimensional-analysis feature to PR #1. Keep this PR bounded.
+
 ## Known limitations
 
 - the normalized income statement is intentionally simplified and is not yet a complete PRC GAAP/IFRS income-statement model;
@@ -99,15 +114,16 @@ CI policy:
 - no automatic component aggregation (for example selling/admin/R&D expense into operating expenses) exists yet;
 - no dimensional business data (department/product/customer) exists yet;
 - Profit Bridge explains arithmetic line-item contribution, not causal operational drivers;
-- no LLM, API, database, or UI integration exists yet.
+- no LLM, API, database, or UI integration exists yet;
+- repository licensing has not been selected in this branch; do not choose a license silently on behalf of maintainers.
 
-## Recommended next bounded increment
+## Recommended next bounded action
 
-**Dimensional Analysis v0.1 — one dimension at a time.**
+**Review/integrate PR #1 when explicitly requested.**
 
-Add a narrow normalized business dataset that can explain revenue and gross-profit variance across one explicit dimension such as department, product, region, or customer. Keep the first implementation generic through a `dimension` + `member` contract rather than hard-coding one business taxonomy.
+After PR #1 is merged, create a fresh branch from updated `main` for **Dimensional Analysis v0.1 — one dimension at a time**.
 
-### Proposed minimum data contract
+### Proposed next implementation contract
 
 ```text
 period
@@ -118,7 +134,7 @@ cogs
 source/provenance
 ```
 
-### Exit conditions
+### Exit conditions for that future increment
 
 - typed dimensional row/result contracts use `Decimal`;
 - ingestion is explicit and fail-closed for required fields;
@@ -130,7 +146,7 @@ source/provenance
 - service/tool boundary can request one named dimension without an LLM;
 - architecture, development log, and this handoff are updated.
 
-### Non-goals for the next increment
+### Non-goals for the future dimensional increment
 
 Do not add:
 

@@ -2,97 +2,131 @@
 
 ## Current status
 
-Milestone: **Model Provider Contract v0.1 — COMPLETE**
+Milestone: **ModelPort Provider Bridge v0.1**
 
-Status: **INTEGRATED — post-merge handoff synchronization**
+Status: **IMPLEMENTATION COMPLETE — deterministic bridge tests green; final documentation-synchronized CI and integration PR pending**
 
-Main integration commit: `c8f18f93b72cd0f4462e0f94a2cbbaebcdafa305`
+Development branch: `feat/model-port-provider-bridge-v0.1`
 
-Merged PR: **#6 — `feat: establish model provider contract v0.1`**
+Base: `main` at `260c00a98007d4a58b59ce0261e1b017d39b6664`, which contains Model Provider Contract v0.1 plus its post-merge handoff synchronization.
 
 The project is licensed under **Apache License 2.0**.
 
-## Integrated provider boundary
+## Implemented bridge
 
-The repository now contains a provider-neutral lower-level model transport contract beneath the existing runtime-facing `ModelPort`:
+The branch closes the previously explicit gap between the runtime-facing `ModelPort` and lower-level `ModelProvider` transport contract:
 
 ```text
 BoundedModelRuntime
         -> ModelPort
-        -> future bounded ModelPort/provider bridge
+        -> ModelPortProviderBridge
         -> ModelProvider
         -> Provider Adapter
         -> external model service (future)
 ```
 
-`BoundedModelRuntime` still depends on `ModelPort.plan()` and `ModelPort.synthesize()`. No `ModelPort` -> `ModelProvider` bridge exists yet.
+`ModelPortProviderBridge` implements:
 
-Integrated through PR #6:
+```text
+plan(PlanningRequest) -> object
+synthesize(SynthesisRequest) -> object
+```
 
-- typed `ModelRequest` / `ModelResponse` schemas with `extra="forbid"`;
-- provider-neutral `ModelProvider.complete(ModelRequest) -> ModelResponse` protocol;
-- `BaseModelAdapter` implementation boundary;
-- deterministic `EchoModelAdapter` for tests only;
-- provider transport contract tests;
-- explicit separation between provider transport and runtime orchestration;
-- `docs/PROVIDER_CONTRACT.md`.
+For each reached model phase, the bridge:
 
-## Runtime invariant
+1. receives the typed runtime request;
+2. creates exactly one typed `ModelRequest` with an explicit `planning` or `synthesis` phase;
+3. includes the serialized runtime request and expected response JSON Schema in transport context;
+4. calls the injected `ModelProvider.complete()` exactly once;
+5. JSON-decodes `ModelResponse.content`;
+6. returns the decoded value as an untrusted object to `BoundedModelRuntime`.
 
-The runtime policy remains unchanged:
+The bridge deliberately does not validate `PlannerDecision` or `SynthesisOutput`. Those checks remain runtime-owned.
+
+## Preserved runtime boundary
+
+The execution invariant remains:
 
 ```text
 single plan -> at most one registered tool -> single synthesis -> terminal
 ```
 
-Future provider work must not:
+`BoundedModelRuntime` still owns:
 
-- bypass `BoundedModelRuntime` or `ModelPort` execution policy;
-- call financial tools directly;
-- invoke unrestricted SQL, Python, shell, filesystem, or dynamic imports;
+- planner decision validation;
+- controlled tool registry enforcement;
+- tool request/response validation;
+- synthesis output validation;
+- terminal failure classification;
+- provider exception sanitization.
+
+The bridge must not:
+
+- invoke financial tools directly;
 - add hidden tools or hidden retries;
+- select an alternate provider or tool after failure;
+- invoke SQL, Python, shell, filesystem, or dynamic imports;
 - alter financial formulas, semantic mappings, validators, or permissions;
 - perform financial write operations;
 - introduce an autonomous ReAct loop.
 
 ## Verification
 
-PR #6 final head:
+Canonical command:
 
-```text
-6e204f11fee6a887580b9b4b06d2538831c6bbe8
+```bash
+python -m pip install -e ".[dev]"
+pytest
 ```
 
-Verification:
+Verified implementation/test anchor:
 
-- GitHub Actions PR CI #130: **success**;
-- runner: GitHub-hosted `ubuntu-latest`;
-- Python 3.12;
-- PR was non-draft and mergeable at integration;
-- squash merge commit: `c8f18f93b72cd0f4462e0f94a2cbbaebcdafa305`.
+```text
+43b14f3a43bac781d83a984cccc916349a080e6d
+```
+
+GitHub Actions push CI #141: **success** on the official GitHub-hosted `ubuntu-latest` runner.
+
+The bridge test slice covers:
+
+- planning transport translation;
+- synthesis transport translation;
+- full `BoundedModelRuntime` completion through a deterministic fake provider;
+- runtime-owned `invalid_plan` validation after bridge decoding;
+- malformed provider JSON -> terminal planner exception without retry;
+- provider exception sanitization through the runtime boundary;
+- malformed synthesis JSON -> terminal synthesis exception without retry;
+- exactly one provider call per reached phase.
+
+Architecture, runtime/provider contract, README, development-log, and milestone-rule updates followed the verified code/test anchor. Verify the latest branch HEAD again before opening the integration PR.
+
+## Scope exclusions
+
+This milestone contains no:
+
+- real OpenAI/Anthropic/Gemini or other provider SDK;
+- provider credentials or secret handling;
+- external model network call;
+- streaming;
+- provider-specific function calling;
+- provider fallback or retry policy;
+- new model-callable tools;
+- Finance Kernel or Tool Registry change;
+- filesystem/SQL/Python/shell execution expansion;
+- financial write path.
 
 ## Known limitations
 
-- no real external model provider exists;
-- no provider credentials/configuration exists;
-- no provider network call exists;
-- no streaming or function-calling provider implementation exists;
-- no `ModelPort` -> `ModelProvider` bridge exists;
-- application filesystem ingestion remains outside the model-callable surface;
-- no unrestricted SQL/Python execution exists;
-- no financial write tools exist.
+- `ModelProvider` still has only deterministic local test implementations;
+- provider credential/configuration policy is not defined;
+- provider network timeout/rate-limit policy is not defined;
+- provider observability/redaction policy is not defined;
+- no production API/UI exists.
 
 ## Recommended next bounded action
 
-**Start `ModelPort Provider Bridge v0.1` on a fresh feature branch.**
+**Verify current-head CI, then open a non-draft integration PR for ModelPort Provider Bridge v0.1.**
 
-The bridge should:
+The integration review should confirm that runtime validation and execution policy remain in `BoundedModelRuntime`, provider calls are one-per-phase without retry, and no real provider SDK or execution-surface expansion entered the branch.
 
-1. implement the existing runtime-facing `ModelPort.plan()` and `ModelPort.synthesize()` interface over an injected `ModelProvider`;
-2. translate only typed planning/synthesis requests to provider transport requests;
-3. convert provider responses back into values that the existing runtime already validates;
-4. preserve provider exception sanitization and all fail-closed runtime behavior;
-5. use deterministic fake providers for tests;
-6. introduce no external provider SDK, credentials, network calls, hidden retries, new tools, or financial write paths.
-
-Do not combine the bridge with a real OpenAI/Anthropic/Gemini adapter. That must remain a later, separate milestone.
+Do not add a real provider adapter to this PR.

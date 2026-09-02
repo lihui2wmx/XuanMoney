@@ -79,7 +79,7 @@ No external LLM/provider SDK was added.
 
 ## 2026-09-02 — Model Provider Contract v0.1
 
-Status: **ACTIVE — contract implementation complete; integration-review corrections applied; current-head CI pending**
+Status: **READY FOR INTEGRATION — integration-review corrections complete; merge requires current-head CI green**
 
 Branch: `feat/model-provider-contract-v0.1`
 
@@ -95,7 +95,9 @@ Implemented:
 - provider-boundary documentation;
 - no vendor SDK, credentials, external network call, streaming, function calling, financial tool access, or financial write path.
 
-The initial contract-test corrections reached green PR CI at `795f9a9c84040242bfb8ee562ebf90b1c75c6664` on the official GitHub-hosted runner. Integration review then identified an architectural-documentation mismatch: the existing `BoundedModelRuntime` depends on `ModelPort.plan()` / `ModelPort.synthesize()`, while this milestone introduces the lower-level `ModelProvider.complete()` transport contract. The branch was corrected to stop claiming that the runtime is already wired directly to `ModelProvider`.
+The initial contract-test corrections reached green PR CI at `795f9a9c84040242bfb8ee562ebf90b1c75c6664`. Integration review then identified an architectural-documentation mismatch: the existing `BoundedModelRuntime` depends on `ModelPort.plan()` / `ModelPort.synthesize()`, while this milestone introduces the lower-level `ModelProvider.complete()` transport contract. The branch was corrected to stop claiming that the runtime is already wired directly to `ModelProvider`.
+
+The corrected code/test/documentation anchor `30d1aae10187d715b055a63a246b67a4a6385723` passed PR CI #126 on the official GitHub-hosted runner. A final handoff/development-state synchronization follows that anchor; integration remains gated on the latest branch HEAD being green.
 
 ### Boundary
 

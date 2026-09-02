@@ -65,7 +65,11 @@ class ModelPortProviderBridge:
         return _decode_provider_content(response.content)
 
 
-def _decode_provider_content(content: str) -> object:
-    """Decode provider text without adding retries, fallback, or semantic validation."""
+def _reject_non_json_constant(constant: str) -> object:
+    raise ValueError(f"provider response contains non-JSON constant: {constant}")
 
-    return json.loads(content)
+
+def _decode_provider_content(content: str) -> object:
+    """Strictly decode provider JSON without retry, fallback, or semantic validation."""
+
+    return json.loads(content, parse_constant=_reject_non_json_constant)

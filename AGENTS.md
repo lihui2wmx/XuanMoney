@@ -41,9 +41,11 @@ This repository is the source of truth for implementation decisions. AI agents m
 
 ## Current milestone
 
-`Model Provider Contract v0.1`: a provider-neutral lower-level model transport contract beneath the existing runtime-facing `ModelPort`.
+`Model Provider Contract v0.1`: **COMPLETE — merged via PR #6**.
 
-## Exit conditions for the current milestone
+The next recommended bounded milestone is `ModelPort Provider Bridge v0.1`; it is not yet implemented. Use `docs/HANDOFF.md` for its exact starting boundary.
+
+## Completed exit conditions for Model Provider Contract v0.1
 
 - typed `ModelRequest` and `ModelResponse` Pydantic contracts exist with `extra="forbid"`;
 - a provider-neutral `ModelProvider.complete(ModelRequest) -> ModelResponse` protocol exists without vendor SDK dependency;
@@ -52,10 +54,10 @@ This repository is the source of truth for implementation decisions. AI agents m
 - provider contract tests use typed requests and responses consistently;
 - documentation explicitly distinguishes `ModelProvider` from the existing runtime-facing `ModelPort`;
 - no claim is made that `BoundedModelRuntime` is wired to `ModelProvider` in this milestone;
-- no external LLM/provider SDK, credentials, network calls, streaming, function calling, filesystem access, SQL/Python execution, dynamic tool registration, or financial write path is introduced;
+- no external LLM/provider SDK, credentials, network calls, streaming, function calling, filesystem access, SQL/Python execution, dynamic tool registration, or financial write path was introduced;
 - the existing bounded runtime invariant remains unchanged;
-- CI passes on a GitHub-hosted runner;
-- `docs/PROVIDER_CONTRACT.md`, development log, canonical handoff, and PR description reflect the implemented and verified state.
+- final PR CI passed on a GitHub-hosted runner;
+- `docs/PROVIDER_CONTRACT.md`, development log, canonical handoff, and PR description reflect the integrated design.
 
 ## Canonical next action
 

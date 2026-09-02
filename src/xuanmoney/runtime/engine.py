@@ -93,13 +93,13 @@ class BoundedModelRuntime:
 
         try:
             raw_plan = self._model.plan(planning_request)
-        except Exception as exc:
+        except Exception:
             return RuntimeResult(
                 query=query,
                 status=RuntimeStatus.PLANNER_FAILED,
                 runtime_failure=RuntimeFailure(
                     code=RuntimeFailureCode.PLANNER_EXCEPTION,
-                    message=f"planner failed: {exc}",
+                    message="planner invocation failed",
                 ),
             )
 
@@ -143,7 +143,7 @@ class BoundedModelRuntime:
 
         try:
             raw_synthesis = self._model.synthesize(synthesis_request)
-        except Exception as exc:
+        except Exception:
             return RuntimeResult(
                 query=query,
                 status=RuntimeStatus.SYNTHESIS_FAILED,
@@ -151,7 +151,7 @@ class BoundedModelRuntime:
                 tool_result=serialized_result,
                 runtime_failure=RuntimeFailure(
                     code=RuntimeFailureCode.SYNTHESIS_EXCEPTION,
-                    message=f"synthesizer failed: {exc}",
+                    message="synthesizer invocation failed",
                 ),
             )
 

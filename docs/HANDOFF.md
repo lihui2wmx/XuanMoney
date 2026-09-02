@@ -4,9 +4,11 @@
 
 Milestone: **ModelPort Provider Bridge v0.1**
 
-Status: **IMPLEMENTATION COMPLETE — deterministic bridge tests green; final documentation-synchronized CI and integration PR pending**
+Status: **READY FOR INTEGRATION REVIEW — PR #8 open; current-head PR CI verification pending**
 
 Development branch: `feat/model-port-provider-bridge-v0.1`
+
+Integration PR: **#8 — `feat: add model port provider bridge v0.1`**
 
 Base: `main` at `260c00a98007d4a58b59ce0261e1b017d39b6664`, which contains Model Provider Contract v0.1 plus its post-merge handoff synchronization.
 
@@ -79,13 +81,10 @@ python -m pip install -e ".[dev]"
 pytest
 ```
 
-Verified implementation/test anchor:
+Verified anchors:
 
-```text
-43b14f3a43bac781d83a984cccc916349a080e6d
-```
-
-GitHub Actions push CI #141: **success** on the official GitHub-hosted `ubuntu-latest` runner.
+- `43b14f3a43bac781d83a984cccc916349a080e6d`: implementation/bridge tests, push CI #141 **success**;
+- `454ab43373592b034a8f441016009a551f5c1bbe`: documentation-synchronized pre-PR head, push CI #148 **success**.
 
 The bridge test slice covers:
 
@@ -98,7 +97,7 @@ The bridge test slice covers:
 - malformed synthesis JSON -> terminal synthesis exception without retry;
 - exactly one provider call per reached phase.
 
-Architecture, runtime/provider contract, README, development-log, and milestone-rule updates followed the verified code/test anchor. Verify the latest branch HEAD again before opening the integration PR.
+PR #8 is non-draft. This PR-state handoff commit triggers fresh current-head push/PR checks; integration remains gated on those checks and review.
 
 ## Scope exclusions
 
@@ -125,8 +124,8 @@ This milestone contains no:
 
 ## Recommended next bounded action
 
-**Verify current-head CI, then open a non-draft integration PR for ModelPort Provider Bridge v0.1.**
+**Verify current-head PR #8 CI and perform integration review only.**
 
-The integration review should confirm that runtime validation and execution policy remain in `BoundedModelRuntime`, provider calls are one-per-phase without retry, and no real provider SDK or execution-surface expansion entered the branch.
+The review should confirm that runtime validation and execution policy remain in `BoundedModelRuntime`, provider calls are one-per-phase without retry, and no real provider SDK or execution-surface expansion entered the branch.
 
-Do not add a real provider adapter to this PR.
+If current-head CI is green and review finds no blocker, PR #8 is eligible for squash integration. Do not add a real provider adapter to PR #8.

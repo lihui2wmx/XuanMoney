@@ -90,6 +90,19 @@ def aggregate_dimension(
     return results
 
 
+def _member_index(
+    items: Iterable[DimensionalMemberMetrics],
+    *,
+    label: str,
+) -> dict[str, DimensionalMemberMetrics]:
+    result: dict[str, DimensionalMemberMetrics] = {}
+    for item in items:
+        if item.member in result:
+            raise ValueError(f"duplicate {label} member {item.member!r}")
+        result[item.member] = item
+    return result
+
+
 def compare_dimension_members(
     *,
     dimension: str,
@@ -104,8 +117,26 @@ def compare_dimension_members(
     and disappearing members without inventing values or dropping their contribution.
     """
 
-    current_by_member = {item.member: item for item in current}
-    previous_by_member = {item.member: item for item in previous}
+    current_by_member = _member_index(current, label="current")
+    previous_by_member = _member_index(previous, label="previous")
+
+    for item in [*current_by_member.values(), *previous_by_member.values()]:
+        if item.dimension != dimension:
+            raise ValueError(
+                f"member {item.member!r} belongs to dimension {item.dimension!r}, "
+                f"expected {dimension!r}"
+            )
+
+    current_currencies = {item.currency for item in current_by_member.values()}
+    previous_currencies = {item.currency for item in previous_by_member.values()}
+    if len(current_currencies) > 1 or len(previous_currencies) > 1:
+        raise ValueError("dimensional member metrics contain mixed currencies")
+    if current_currencies and previous_currencies and current_currencies != previous_currencies:
+        raise ValueError(
+            "cannot compare dimensional periods with different currencies: "
+            f"current={sorted(current_currencies)}, previous={sorted(previous_currencies)}"
+        )
+
     members = sorted(current_by_member.keys() | previous_by_member.keys())
 
     contributions: list[DimensionalMemberContribution] = []

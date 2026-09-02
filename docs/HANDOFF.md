@@ -2,146 +2,98 @@
 
 ## Current status
 
-Milestone: **ModelPort Provider Bridge v0.1**
+Milestone: **ModelPort Provider Bridge v0.1 — COMPLETE**
 
-Status: **READY FOR INTEGRATION — review blockers resolved; final docs-synchronized CI pending**
+Status: **INTEGRATED — post-merge handoff synchronization**
 
-Development branch: `feat/model-port-provider-bridge-v0.1`
+Main integration commit: `b6614b7f207fe6d594c8472758a053c85668bae6`
 
-Integration PR: **#8 — `feat: add model port provider bridge v0.1`**
-
-Base: `main` at `260c00a98007d4a58b59ce0261e1b017d39b6664`, which contains Model Provider Contract v0.1 plus its post-merge handoff synchronization.
+Merged PR: **#8 — `feat: add model port provider bridge v0.1`**
 
 The project is licensed under **Apache License 2.0**.
 
-## Implemented bridge
+## Integrated model/provider path
 
-The branch closes the gap between the runtime-facing `ModelPort` and lower-level `ModelProvider` transport contract:
+The repository now contains the complete provider-neutral path from bounded runtime orchestration to a lower-level provider transport contract:
 
 ```text
 BoundedModelRuntime
         -> ModelPort
         -> ModelPortProviderBridge   # xuanmoney.runtime
-        -> ModelProvider             # xuanmoney.model transport
+        -> ModelProvider             # xuanmoney.model
         -> Provider Adapter
         -> external model service (future)
 ```
 
-`ModelPortProviderBridge` implements:
+`ModelPortProviderBridge`:
 
-```text
-plan(PlanningRequest) -> object
-synthesize(SynthesisRequest) -> object
-```
+- creates exactly one typed provider request for each reached planning/synthesis phase;
+- carries the serialized typed runtime request and copied response JSON Schema;
+- calls `ModelProvider.complete()` exactly once per reached phase;
+- strictly JSON-decodes provider content;
+- rejects malformed JSON and non-standard `NaN`/`Infinity` numeric constants;
+- returns decoded output as untrusted data for existing runtime validation;
+- contains no retry, fallback, alternate tool/provider selection, or financial execution logic.
 
-For each reached model phase, the bridge:
+## Preserved runtime and package boundaries
 
-1. receives the typed runtime request;
-2. creates exactly one typed `ModelRequest` with an explicit `planning` or `synthesis` phase;
-3. includes the serialized runtime request and expected response JSON Schema in transport context;
-4. calls the injected `ModelProvider.complete()` exactly once;
-5. strictly JSON-decodes `ModelResponse.content`;
-6. returns the decoded value as an untrusted object to `BoundedModelRuntime`.
-
-Strict JSON decoding rejects malformed JSON and non-standard numeric constants (`NaN`, `Infinity`, `-Infinity`). The bridge deliberately does not validate `PlannerDecision` or `SynthesisOutput`; those checks remain runtime-owned.
-
-## Package dependency boundary
-
-The first integration review found one blocker: the initial bridge location under `xuanmoney.model` inverted the intended dependency direction by making the lower-level provider transport package depend on runtime contracts.
-
-That blocker is corrected:
-
-- `ModelPortProviderBridge` lives in `xuanmoney.runtime.provider_bridge`;
-- `xuanmoney.runtime` exports the bridge;
-- `xuanmoney.model` exports only provider transport contracts and remains independent of `xuanmoney.runtime`;
-- dependency direction is `runtime bridge -> model provider transport`, never the reverse;
-- response JSON Schemas are copied into each transport request so provider-side mutation cannot alter cached schemas for later calls.
-
-## Preserved runtime boundary
-
-The execution invariant remains:
+The runtime invariant remains:
 
 ```text
 single plan -> at most one registered tool -> single synthesis -> terminal
 ```
 
-`BoundedModelRuntime` still owns:
+`BoundedModelRuntime` remains responsible for planner/synthesis validation, controlled-tool enforcement, terminal failure classification, and provider-exception sanitization.
 
-- planner decision validation;
-- controlled tool registry enforcement;
-- tool request/response validation;
-- synthesis output validation;
-- terminal failure classification;
-- provider exception sanitization.
+Package dependency direction is:
 
-The bridge must not:
+```text
+xuanmoney.runtime.provider_bridge -> xuanmoney.model
+```
 
-- invoke financial tools directly;
-- add hidden tools or hidden retries;
-- select an alternate provider or tool after failure;
-- invoke SQL, Python, shell, filesystem, or dynamic imports;
-- alter financial formulas, semantic mappings, validators, or permissions;
-- perform financial write operations;
-- introduce an autonomous ReAct loop.
+`xuanmoney.model` remains lower-level provider transport and does not depend on runtime, tools, or finance execution modules.
 
 ## Verification
 
-Canonical command:
+Final PR #8 branch head:
 
-```bash
-python -m pip install -e ".[dev]"
-pytest
+```text
+427b9083b206fa8abb7b97d9cb1f3b558c957f2d
 ```
 
-Verified anchors:
+Verification:
 
-- `43b14f3a43bac781d83a984cccc916349a080e6d`: initial implementation/bridge tests, push CI #141 **success**;
-- `454ab43373592b034a8f441016009a551f5c1bbe`: initial documentation synchronization, push CI #148 **success**;
-- `12e20c70f9b495c6837ed9f98d3d975d8e3b06b6`: package-layering correction, PR CI #167 **success**;
-- `be90517c18594a4805bf506b4ce7b81cc2a538ae`: review-state synchronization, PR CI #171 **success**;
-- `865f753faf817a83e2a0dcd6b750396ead337583`: strict JSON transport hardening, PR CI #175 **success**.
+- final PR CI #181: **success**;
+- GitHub-hosted `ubuntu-latest` runner;
+- Python 3.12;
+- branch was ahead of and not behind `main` at final review;
+- no unresolved review threads/comments;
+- squash merge commit: `b6614b7f207fe6d594c8472758a053c85668bae6`.
 
-The deterministic bridge tests cover:
+## Current limitations
 
-- planning transport translation;
-- synthesis transport translation;
-- full `BoundedModelRuntime` completion through a fake provider;
-- runtime-owned `invalid_plan` validation after bridge decoding;
-- malformed provider JSON -> terminal planner exception without retry;
-- non-standard JSON numeric constants -> terminal planner exception without retry;
-- provider exception sanitization through the runtime boundary;
-- malformed synthesis JSON -> terminal synthesis exception without retry;
-- exactly one provider call per reached phase.
+There is still no real external model-provider integration. Specifically:
 
-This final provider-contract/development-log/handoff synchronization follows the green strict-JSON anchor and triggers fresh current-head checks. Merge remains gated on those checks.
-
-## Scope exclusions
-
-This milestone contains no:
-
-- real OpenAI/Anthropic/Gemini or other provider SDK;
-- provider credentials or secret handling;
-- external model network call;
-- streaming;
-- provider-specific function calling;
-- provider fallback or retry policy;
-- new model-callable tools;
-- Finance Kernel or Tool Registry change;
-- filesystem/SQL/Python/shell execution expansion;
-- financial write path.
-
-## Known limitations
-
-- `ModelProvider` still has only deterministic local test implementations;
-- provider credential/configuration policy is not defined;
-- provider network timeout/rate-limit policy is not defined;
-- provider observability/redaction policy is not defined;
-- no production API/UI exists.
+- no OpenAI/Anthropic/Gemini or other provider SDK;
+- no provider credentials or secret-resolution mechanism;
+- no external model network call;
+- no provider timeout/rate-limit configuration contract;
+- no provider observability/redaction contract beyond existing runtime exception sanitization;
+- no streaming or provider-specific function calling;
+- no provider retry/fallback policy;
+- no production API/UI.
 
 ## Recommended next bounded action
 
-**Verify final current-head PR #8 CI and perform final integration review only.**
+**Start `Provider Configuration & Safety Contract v0.1` on a fresh feature branch.**
 
-If the final current-head checks are green, the branch remains ahead of and not behind `main`, review threads contain no blocker, and the changed-file set contains no execution-surface expansion, PR #8 is eligible for squash integration.
+The increment should define and test, without a real provider SDK or network call:
 
-Do not add a real provider adapter to PR #8.
+1. typed provider-neutral, non-secret configuration (provider/model identifiers and bounded request timeout);
+2. a credential-reference type that identifies a credential source without containing, serializing, or logging the secret value itself;
+3. explicit `max_attempts = 1` / no automatic provider retry policy consistent with the current runtime invariant;
+4. a stable provider transport failure taxonomy whose public/serialized form contains no raw provider diagnostic or credential material;
+5. deterministic fake-provider/config tests for invalid timeout/configuration, secret non-serialization, and sanitized failure behavior;
+6. documentation of the trust boundary before any real provider SDK is introduced.
+
+Do **not** combine this increment with OpenAI/Anthropic/Gemini SDK installation, API keys, network calls, streaming, new model-callable tools, or financial write behavior.

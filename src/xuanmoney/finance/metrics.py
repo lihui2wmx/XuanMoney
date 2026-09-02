@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-from decimal import Decimal
-
 from xuanmoney.domain import Evidence, IncomeStatement, MetricResult, Unit
 
 
 def _evidence(statement: IncomeStatement, field: str) -> Evidence:
     return Evidence(
-        source="income_statement",
+        source=statement.source,
         field=field,
         period=statement.period,
         value=getattr(statement, field),

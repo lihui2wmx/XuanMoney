@@ -3,6 +3,7 @@ from __future__ import annotations
 from xuanmoney.agent.state import AgentPhase, FinanceAgentState
 from xuanmoney.domain import AnalysisResult, BalanceSheet, Finding, IncomeStatement
 from xuanmoney.finance.metrics import profitability_metrics
+from xuanmoney.finance.profit_bridge import profit_bridge, validate_profit_bridge
 from xuanmoney.finance.validation import validate_balance_sheet
 from xuanmoney.finance.variance import compare_metric_sets
 
@@ -18,8 +19,8 @@ def analyze_financials(
         query=query,
         plan=[
             "compute deterministic profitability metrics",
-            "compare periods when prior data is available",
-            "validate accounting identities when validation data is available",
+            "compare periods and reconcile a profit bridge when prior data is available",
+            "validate accounting identities and deterministic reconciliations",
             "derive evidence-backed findings",
         ],
     )
@@ -28,11 +29,15 @@ def analyze_financials(
         state.phase = AgentPhase.COMPUTING
         metrics = profitability_metrics(current)
         variances = []
+        bridge = None
         if previous is not None:
             variances = compare_metric_sets(metrics, profitability_metrics(previous))
+            bridge = profit_bridge(current, previous)
 
         state.phase = AgentPhase.VALIDATING
         validations = []
+        if bridge is not None:
+            validations.append(validate_profit_bridge(bridge))
         if balance_sheet is not None:
             validations.append(validate_balance_sheet(balance_sheet))
 
@@ -69,6 +74,7 @@ def analyze_financials(
             period=current.period,
             metrics=metrics,
             variances=variances,
+            profit_bridge=bridge,
             validations=validations,
             findings=findings,
         )

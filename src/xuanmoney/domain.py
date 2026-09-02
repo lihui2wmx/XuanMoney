@@ -55,6 +55,25 @@ class VarianceResult(BaseModel):
     relative_change: Decimal | None = None
 
 
+class ProfitBridgeContribution(BaseModel):
+    component: str
+    raw_change: Decimal
+    contribution: Decimal
+    evidence: list[Evidence] = Field(default_factory=list)
+
+
+class ProfitBridgeResult(BaseModel):
+    current_period: str
+    previous_period: str
+    total_net_profit_change: Decimal
+    contributions: list[ProfitBridgeContribution] = Field(default_factory=list)
+    reconciliation_difference: Decimal
+
+    @property
+    def reconciled(self) -> bool:
+        return self.reconciliation_difference == 0
+
+
 class ValidationResult(BaseModel):
     name: str
     passed: bool
@@ -71,6 +90,7 @@ class AnalysisResult(BaseModel):
     period: str
     metrics: list[MetricResult] = Field(default_factory=list)
     variances: list[VarianceResult] = Field(default_factory=list)
+    profit_bridge: ProfitBridgeResult | None = None
     validations: list[ValidationResult] = Field(default_factory=list)
     findings: list[Finding] = Field(default_factory=list)
 

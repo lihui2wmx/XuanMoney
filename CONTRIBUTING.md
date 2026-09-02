@@ -2,6 +2,10 @@
 
 XuanMoney is an open-source, evidence-first finance-agent project. Contributions should preserve deterministic financial semantics and auditable provenance.
 
+## License of contributions
+
+XuanMoney is licensed under the Apache License 2.0. Unless you explicitly state otherwise, contributions intentionally submitted for inclusion in this project are provided under the terms of the Apache License 2.0, consistent with Section 5 of the license.
+
 ## Development setup
 
 Requirements: Python 3.12+

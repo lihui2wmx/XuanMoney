@@ -4,23 +4,28 @@
 
 Milestone: **Finance Agent v0.1**
 
-Status: **ACTIVE**
+Status: **ACTIVE — deterministic analysis core verified; dimensional analysis is next**
 
 Development branch: `feat/finance-agent-v0.1`
 
-The repository has a deterministic, read-only finance-analysis core plus the first normalized tabular-ingestion and semantic-mapping layer. The current branch is not yet an integration candidate until the new ingestion slice is verified by CI and the handoff is refreshed with the verified HEAD.
+Verified code/test anchor: `4eb9e56e59ccba5527f549a6a46d8e4184e43931`
+
+At that anchor, GitHub Actions completed successfully on the GitHub-hosted `ubuntu-latest` runner with the ingestion and Profit Bridge test suites present. Commits after the anchor are documentation/handoff synchronization unless repository history shows otherwise; a new agent must still inspect current HEAD and CI before changing code.
 
 ## Implemented capabilities
 
 - typed income statement and balance sheet contracts using `Decimal`;
 - profitability metrics: gross profit, gross margin, operating profit, net profit;
 - period-over-period metric variance;
+- deterministic Profit Bridge decomposition of net-profit change;
+- exact Profit Bridge reconciliation validator;
 - balance-sheet identity validation;
 - evidence-backed findings and source provenance;
 - bounded `FinanceAgentState` orchestration boundary;
 - CSV and XLSX income-statement ingestion;
 - explicit Chinese/English semantic alias registry for the normalized v0.1 schema;
 - fail-closed behavior for missing required fields, duplicate headers, and ambiguous semantic mappings;
+- repository-native AI handoff workflow and open-source contribution workflow;
 - unit tests and GitHub Actions CI.
 
 ## Trust boundary
@@ -33,6 +38,7 @@ v0.1 remains strictly read-only. The following are out of scope:
 - deletion/update of financial records;
 - unrestricted SQL;
 - model-defined accounting formulas or metric semantics;
+- model-guessed spreadsheet semantics;
 - autonomous financial actions.
 
 An LLM may be introduced later only above deterministic tools and validators.
@@ -52,18 +58,38 @@ The normalized income-statement schema currently recognizes:
 
 Only explicit aliases in `src/xuanmoney/semantic/registry.py` are accepted. Unknown columns are ignored rather than inferred. Required semantic fields are `period`, `revenue`, and `cogs`.
 
-## Verification state
+## Profit Bridge contract
 
-The earlier finance-kernel slice passed GitHub Actions. The ingestion slice added in the current development session still requires a final CI check after all documentation/workflow changes are committed.
+For the simplified current model:
 
-Local verification command:
+```text
+Δnet_profit = +Δrevenue
+              -Δcogs
+              -Δoperating_expenses
+              +Δother_income
+              -Δother_expenses
+              -Δtaxes
+```
+
+Positive contribution means the line item improved net profit relative to the comparison period. Negative contribution means it reduced net profit. The contribution sum must reconcile exactly to net-profit change under `Decimal` arithmetic.
+
+This is deterministic accounting decomposition, not causal business root-cause inference.
+
+## Verification
+
+Canonical command:
 
 ```bash
 python -m pip install -e ".[dev]"
 pytest
 ```
 
-CI policy: GitHub-hosted official runner labels only; current core runner is `ubuntu-latest`. No `self-hosted` runner.
+CI policy:
+
+- GitHub-hosted official runner labels only;
+- current core runner: `ubuntu-latest`;
+- no `self-hosted` runner;
+- checkout/runtime setup uses GitHub-maintained actions.
 
 ## Known limitations
 
@@ -72,24 +98,47 @@ CI policy: GitHub-hosted official runner labels only; current core runner is `ub
 - no balance-sheet Excel/CSV ingestion exists yet;
 - no automatic component aggregation (for example selling/admin/R&D expense into operating expenses) exists yet;
 - no dimensional business data (department/product/customer) exists yet;
-- no profit-bridge/root-cause decomposition exists yet;
+- Profit Bridge explains arithmetic line-item contribution, not causal operational drivers;
 - no LLM, API, database, or UI integration exists yet.
 
 ## Recommended next bounded increment
 
-**Profit Bridge v0.1 over normalized income statements.**
+**Dimensional Analysis v0.1 — one dimension at a time.**
 
-Implement deterministic period-to-period net-profit contribution decomposition across the fields already present in `IncomeStatement`, with reconciliation back to total net-profit change and evidence for each contribution.
+Add a narrow normalized business dataset that can explain revenue and gross-profit variance across one explicit dimension such as department, product, region, or customer. Keep the first implementation generic through a `dimension` + `member` contract rather than hard-coding one business taxonomy.
+
+### Proposed minimum data contract
+
+```text
+period
+dimension
+member
+revenue
+cogs
+source/provenance
+```
 
 ### Exit conditions
 
-- each supported line-item contribution has an explicit sign convention and formula;
-- the sum of contributions exactly reconciles to the computed net-profit variance within `Decimal` arithmetic;
-- a reconciliation validator fails closed when the bridge does not tie;
-- tests cover revenue increase/decrease, cost increase/decrease, expense/tax changes, and exact reconciliation;
-- service-level analysis can emit a structured profit-bridge result without an LLM;
+- typed dimensional row/result contracts use `Decimal`;
+- ingestion is explicit and fail-closed for required fields;
+- aggregation by `(period, dimension, member)` is deterministic;
+- member-level revenue, COGS, gross-profit, and gross-margin metrics are available;
+- period-to-period contribution analysis reconciles member totals back to the selected dimension total;
+- evidence/provenance survives aggregation;
+- tests cover new/disappearing members, zero revenue, positive/negative changes, and exact total reconciliation;
+- service/tool boundary can request one named dimension without an LLM;
 - architecture, development log, and this handoff are updated.
 
 ### Non-goals for the next increment
 
-Do not add LLM orchestration, dimensional drill-down, database access, UI, ERP integration, payments, or financial write actions in the profit-bridge increment.
+Do not add:
+
+- multi-dimensional OLAP/cube behavior;
+- causal inference;
+- forecasting;
+- LLM planning;
+- database access;
+- UI;
+- ERP integration;
+- payments or any financial write action.

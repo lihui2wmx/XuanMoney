@@ -66,7 +66,7 @@ Finance Kernel                  Dimensional Kernel
           External model service (future)
 ```
 
-No external provider SDK or network integration is implemented in the current bridge milestone.
+The bounded runtime, provider transport contract, and ModelPort/provider bridge are integrated. No external provider SDK, credentials, or network integration exists yet.
 
 ## Module boundaries
 
@@ -97,7 +97,7 @@ Owns model-assisted execution policy and adapters that depend on runtime contrac
 ### `model/`
 Owns the lower-level provider-neutral transport surface only: `ModelRequest`, `ModelResponse`, `ModelProvider`, and provider adapter implementations. This package must remain independent of `xuanmoney.runtime` and financial/tool execution modules. See `docs/PROVIDER_CONTRACT.md`.
 
-Dependency direction is therefore:
+Dependency direction is:
 
 ```text
 runtime bridge -> model provider transport
@@ -145,19 +145,25 @@ The bridge may only translate model I/O:
 PlanningRequest
   -> ModelRequest(phase=planning, request, response_schema)
   -> ModelProvider.complete()
-  -> JSON decode
+  -> strict JSON decode
   -> untrusted object
   -> runtime validation
 
 SynthesisRequest
   -> ModelRequest(phase=synthesis, request, response_schema)
   -> ModelProvider.complete()
-  -> JSON decode
+  -> strict JSON decode
   -> untrusted object
   -> runtime validation
 ```
 
-Each reached model phase performs one provider call. Malformed JSON or provider exceptions terminate through the existing runtime exception boundary; the bridge does not retry.
+Each reached model phase performs one provider call. Malformed JSON, non-standard `NaN`/`Infinity` constants, or provider exceptions terminate through the existing runtime exception boundary; the bridge does not retry.
+
+## Provider configuration safety boundary
+
+Before a real provider adapter or SDK is introduced, provider configuration must have an explicit reviewed contract. That contract should separate non-secret configuration from credential material, use references rather than embedding secret values, bound request timeout behavior, preserve the current no-automatic-retry policy, and define safe failure/redaction semantics.
+
+A configuration object must not become a container for API keys or other secret values, and provider diagnostics must not be promoted into user-facing/runtime results without an explicit redaction policy.
 
 ## Income-statement Profit Bridge invariant
 
@@ -248,9 +254,9 @@ Core CI uses GitHub-hosted runner labels only. Current Python CI runs on `ubuntu
 
 ## Next architecture increments
 
-1. integrate and review `ModelPort Provider Bridge v0.1` using deterministic fake providers only;
-2. add a first real provider adapter only as a separate milestone after the bridge is integrated and re-verified;
-3. define provider configuration/credential and observability policy before production network use;
+1. define and integrate **Provider Configuration & Safety Contract v0.1** without a vendor SDK or network call;
+2. add a first real provider adapter only as a separate milestone after configuration, credential-reference, timeout/no-retry, and redaction contracts are reviewed;
+3. add provider observability/network integration under explicit secret-handling and operational policy;
 4. richer validation and a more complete financial statement model;
 5. API/UI after runtime and result contracts stabilize;
 6. multi-dimensional analysis only as a separate explicitly validated milestone;

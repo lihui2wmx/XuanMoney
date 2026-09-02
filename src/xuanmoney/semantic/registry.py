@@ -37,14 +37,23 @@ class SemanticMappingError(ValueError):
 def resolve_income_statement_columns(headers: Iterable[str]) -> dict[str, str]:
     """Resolve source headers to the canonical v0.1 income-statement schema.
 
-    Mapping is deliberately explicit. Unknown headers are ignored; ambiguous aliases and
-    missing required fields fail closed rather than being guessed by an LLM.
+    Mapping is deliberately explicit. Unknown headers are ignored; ambiguous aliases,
+    duplicate normalized headers, and missing required fields fail closed rather than
+    being guessed by an LLM.
     """
 
     source_headers = [str(header) for header in headers]
     normalized_sources: dict[str, list[str]] = {}
     for header in source_headers:
         normalized_sources.setdefault(_normalize_header(header), []).append(header)
+
+    duplicates = {
+        normalized: originals
+        for normalized, originals in normalized_sources.items()
+        if len(originals) > 1
+    }
+    if duplicates:
+        raise SemanticMappingError(f"duplicate normalized source columns: {duplicates}")
 
     resolved: dict[str, str] = {}
     for field in INCOME_STATEMENT_FIELDS:

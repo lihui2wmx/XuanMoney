@@ -121,6 +121,26 @@ def test_invalid_request_has_typed_failure_without_echoing_input() -> None:
     assert "do-not-echo" not in failure.model_dump_json()
 
 
+def test_unknown_top_level_request_parameter_is_rejected() -> None:
+    registry = build_analysis_tool_registry()
+
+    with pytest.raises(ToolInvocationError) as captured:
+        registry.invoke(
+            "analyze_financials",
+            {
+                "query": "analyze",
+                "current": {"period": "2026-08", "revenue": "100", "cogs": "50"},
+                "unexpected_control": "ignored-by-default-would-be-unsafe",
+            },
+        )
+
+    assert captured.value.failure.code is ToolErrorCode.INVALID_REQUEST
+    assert any(
+        item.get("type") == "extra_forbidden"
+        for item in captured.value.failure.details
+    )
+
+
 def test_domain_execution_failure_is_wrapped_in_stable_tool_error() -> None:
     registry = build_analysis_tool_registry()
 
@@ -144,3 +164,19 @@ def test_domain_execution_failure_is_wrapped_in_stable_tool_error() -> None:
 
     assert captured.value.failure.code is ToolErrorCode.EXECUTION_FAILED
     assert captured.value.failure.tool == "analyze_dimension"
+
+
+def test_financial_agent_failed_phase_is_normalized_to_tool_execution_failure() -> None:
+    registry = build_analysis_tool_registry()
+
+    with pytest.raises(ToolInvocationError) as captured:
+        registry.invoke(
+            "analyze_financials",
+            {
+                "query": "analyze zero-revenue statement",
+                "current": {"period": "2026-08", "revenue": "0", "cogs": "0"},
+            },
+        )
+
+    assert captured.value.failure.code is ToolErrorCode.EXECUTION_FAILED
+    assert captured.value.failure.tool == "analyze_financials"

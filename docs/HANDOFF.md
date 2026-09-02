@@ -4,7 +4,7 @@
 
 Milestone: **Model Provider Contract v0.1**
 
-Status: **READY FOR SECOND INTEGRATION REVIEW — architectural/documentation corrections applied; current-head CI verification pending**
+Status: **READY FOR INTEGRATION — integration-review blockers resolved; merge requires current-head CI green**
 
 Development branch: `feat/model-provider-contract-v0.1`
 
@@ -35,8 +35,9 @@ Implemented in PR #6:
 - provider-neutral `ModelProvider.complete(ModelRequest) -> ModelResponse` protocol;
 - `BaseModelAdapter` implementation boundary;
 - deterministic `EchoModelAdapter` for tests only;
-- typed provider contract tests;
-- provider boundary documentation.
+- typed provider transport contract tests;
+- explicit tests that the provider contract does not expose the runtime `ModelPort` or financial execution surface;
+- provider boundary documentation and synchronized repository handoff state.
 
 ## Runtime invariant
 
@@ -85,19 +86,35 @@ CI policy:
 - current runner: `ubuntu-latest`;
 - no `self-hosted` runner.
 
-The contract-test correction anchor `795f9a9c84040242bfb8ee562ebf90b1c75c6664` passed PR CI. Subsequent integration-review corrections synchronize the provider architecture and repository handoff state, so inspect the latest branch HEAD and its checks before merge.
+Verified anchors:
 
-## Review state
+- `795f9a9c84040242bfb8ee562ebf90b1c75c6664`: contract-test corrections, PR CI #114 success;
+- `30d1aae10187d715b055a63a246b67a4a6385723`: architecture/test-semantics corrections, PR CI #126 success.
 
-The first integration review found two blocking inconsistencies:
+This final handoff/development-state synchronization follows those verified anchors. Merge only if the latest branch HEAD also has successful CI.
 
-1. documentation and tests implied that `BoundedModelRuntime` was already integrated directly with `ModelProvider`, although the runtime actually depends on `ModelPort`;
-2. `AGENTS.md`, `docs/DEVELOPMENT_LOG.md`, and this handoff did not agree on the active milestone and PR #5 integration state.
+## Integration review
 
-Those inconsistencies have been corrected on the feature branch. No runtime execution policy or financial behavior was changed by the correction.
+The first review found three blockers:
+
+1. documentation/tests implied direct `BoundedModelRuntime -> ModelProvider` integration although the runtime actually depends on `ModelPort`;
+2. `AGENTS.md`, `docs/DEVELOPMENT_LOG.md`, and this handoff disagreed on the active milestone and PR #5 state;
+3. the handoff lacked a concrete base SHA and still described pre-PR actions.
+
+All three were corrected. The second review confirmed:
+
+- no `src/xuanmoney/runtime/*` change;
+- no Finance Kernel or Tool Registry change;
+- no external provider SDK/network path;
+- no filesystem/SQL/Python/shell execution expansion;
+- no financial write expansion;
+- feature branch is ahead of, and not behind, `main`;
+- PR #6 remains mergeable.
+
+No remaining integration blocker is known other than the standard current-head CI gate.
 
 ## Recommended next bounded action
 
-**Verify current-head PR #6 CI, then perform the second integration review.**
+**If current-head PR #6 CI is green, squash-merge PR #6.**
 
-If current-head CI is green and the second review finds no remaining blocker, PR #6 is eligible for integration. Do not add a real model provider or the `ModelPort`/provider bridge to PR #6.
+After integration, start a fresh branch for a bounded `ModelPort` -> `ModelProvider` bridge. Do not connect a real provider SDK until that bridge is implemented and tested against the existing fail-closed runtime behavior.

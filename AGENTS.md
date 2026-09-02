@@ -39,6 +39,7 @@ This repository is the source of truth for implementation decisions. AI agents m
 21. Provider adapters translate model I/O only; they must not add hidden tools, hidden retries, financial rules, or alternate execution paths.
 22. `BoundedModelRuntime` depends on the existing `ModelPort`. Lower-level provider transport must remain behind an explicit, tested `ModelPort` bridge.
 23. The provider bridge may translate typed runtime requests and decode provider transport responses, but runtime-owned validation of planner/synthesis semantics must not migrate into the bridge.
+24. `xuanmoney.model` is the lower-level provider transport package and must not depend on `xuanmoney.runtime`; runtime-owned bridge code may depend downward on `xuanmoney.model`.
 
 ## Current milestone
 
@@ -47,6 +48,7 @@ This repository is the source of truth for implementation decisions. AI agents m
 ## Exit conditions for the current milestone
 
 - `ModelPortProviderBridge` implements `plan(PlanningRequest)` and `synthesize(SynthesisRequest)` over an injected `ModelProvider`;
+- the bridge lives at the runtime boundary so dependency direction remains `runtime -> model transport`, never `model transport -> runtime`;
 - planning and synthesis each produce exactly one typed `ModelRequest` with an explicit phase, serialized typed runtime request, and response JSON Schema;
 - provider response content is decoded as JSON and returned as an untrusted object for existing runtime-owned validation;
 - the bridge does not invoke financial tools, alter tool selection, validate financial semantics, retry provider calls, or provide fallback execution paths;

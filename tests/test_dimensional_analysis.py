@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from openpyxl import Workbook
 import pytest
 
 from xuanmoney.domain import DimensionalRow
@@ -139,6 +140,23 @@ def test_csv_dimensional_loader_preserves_file_row_source(tmp_path) -> None:
 
     assert len(rows) == 1
     assert rows[0].source == "business.csv:row:2"
+
+
+def test_xlsx_dimensional_loader_preserves_sheet_and_row_source(tmp_path) -> None:
+    path = tmp_path / "business.xlsx"
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "业务"
+    worksheet.append(["会计期间", "维度", "成员", "营业收入", "营业成本"])
+    worksheet.append(["2026-08", "product", "A", 100, 60])
+    workbook.save(path)
+    workbook.close()
+
+    rows = load_dimensional_rows(path, sheet_name="业务")
+
+    assert len(rows) == 1
+    assert rows[0].source == "business.xlsx:业务:row:2"
+    assert rows[0].revenue == Decimal("100")
 
 
 def test_analysis_fails_closed_on_cross_period_currency_mismatch() -> None:

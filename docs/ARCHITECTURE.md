@@ -92,10 +92,18 @@ Application boundaries for `analyze_financials` and `analyze_dimension`.
 The only model-callable execution boundary. `AnalysisToolRegistry` exposes a fixed code-reviewed set of read-only operations, JSON Schema metadata, typed request/response validation, and stable failure semantics. See `docs/TOOLS.md`.
 
 ### `runtime/`
-Owns model-assisted execution policy. `BoundedModelRuntime` performs exactly one planning call, invokes at most one registered tool, and performs one synthesis call only after successful tool execution. It validates planner and synthesis outputs and normalizes failures. See `docs/RUNTIME.md`.
+Owns model-assisted execution policy and adapters that depend on runtime contracts. `BoundedModelRuntime` performs exactly one planning call, invokes at most one registered tool, and performs one synthesis call only after successful tool execution. `ModelPortProviderBridge` also lives here because it implements the runtime-facing `ModelPort` while adapting the lower-level provider transport. Runtime validates planner/synthesis outputs and normalizes failures. See `docs/RUNTIME.md`.
 
 ### `model/`
-Owns provider-neutral model transport contracts and adapters. `ModelProvider.complete()` is lower-level than the runtime-facing `ModelPort`. `ModelPortProviderBridge` translates typed runtime requests into provider transport requests and JSON-decodes provider response content, but it does not own planner/synthesis semantic validation, tool execution, retries, or financial rules. See `docs/PROVIDER_CONTRACT.md`.
+Owns the lower-level provider-neutral transport surface only: `ModelRequest`, `ModelResponse`, `ModelProvider`, and provider adapter implementations. This package must remain independent of `xuanmoney.runtime` and financial/tool execution modules. See `docs/PROVIDER_CONTRACT.md`.
+
+Dependency direction is therefore:
+
+```text
+runtime bridge -> model provider transport
+```
+
+not the reverse.
 
 ## Controlled tool invariant
 

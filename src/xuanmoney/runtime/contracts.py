@@ -7,8 +7,11 @@ from pydantic import BaseModel, ConfigDict, Field
 from xuanmoney.tools import ToolMetadata
 
 
+_STRICT_MODEL = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+
 class ToolCallPlan(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = _STRICT_MODEL
 
     kind: Literal["tool_call"] = "tool_call"
     tool: str = Field(min_length=1)
@@ -16,7 +19,7 @@ class ToolCallPlan(BaseModel):
 
 
 class NoToolPlan(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = _STRICT_MODEL
 
     kind: Literal["no_tool"] = "no_tool"
     reason: str = Field(min_length=1)
@@ -29,14 +32,14 @@ PlannerDecision = Annotated[
 
 
 class PlanningRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = _STRICT_MODEL
 
     query: str = Field(min_length=1)
     tools: list[ToolMetadata] = Field(min_length=1)
 
 
 class SynthesisRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = _STRICT_MODEL
 
     query: str = Field(min_length=1)
     tool_name: str = Field(min_length=1)
@@ -44,7 +47,7 @@ class SynthesisRequest(BaseModel):
 
 
 class SynthesisOutput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = _STRICT_MODEL
 
     answer: str = Field(min_length=1)
 

@@ -6,9 +6,13 @@ class FakeRuntime:
     def __init__(self, provider):
         self.provider = provider
 
-    def run(self, request):
+    def run(self, request: ModelRequest):
         plan = self.provider.complete(request)
-        return self.provider.complete(plan)
+        synthesis_request = ModelRequest(
+            prompt=plan.content,
+            context={"previous_provider": plan.provider},
+        )
+        return self.provider.complete(synthesis_request)
 
 
 def test_runtime_can_use_provider_contract():
@@ -17,4 +21,5 @@ def test_runtime_can_use_provider_contract():
 
     result = runtime.run(ModelRequest(prompt="analyze revenue"))
 
-    assert result is not None
+    assert result.content == "analyze revenue"
+    assert result.provider == "echo"

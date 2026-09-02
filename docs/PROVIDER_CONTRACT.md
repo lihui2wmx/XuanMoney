@@ -83,7 +83,9 @@ request = serialized SynthesisRequest
 response_schema = SynthesisOutput JSON Schema
 ```
 
-The bridge calls `ModelProvider.complete()` exactly once for each reached phase and JSON-decodes `ModelResponse.content`.
+The bridge calls `ModelProvider.complete()` exactly once for each reached phase and strictly JSON-decodes `ModelResponse.content`.
+
+The decoder rejects non-standard JSON numeric constants such as `NaN`, `Infinity`, and `-Infinity`. They are transport failures rather than values that may enter planner arguments or synthesis output.
 
 The decoded value remains untrusted. The bridge deliberately does **not** validate it as `PlannerDecision` or `SynthesisOutput`; `BoundedModelRuntime` remains the owner of those validation decisions.
 
@@ -91,7 +93,7 @@ The decoded value remains untrusted. The bridge deliberately does **not** valida
 
 The bridge contains no retry, fallback, alternate provider selection, or tool invocation.
 
-If provider invocation raises or response content is not valid JSON, the exception propagates to the existing runtime phase boundary. `BoundedModelRuntime` then normalizes it to the existing terminal planner/synthesis exception result without echoing raw provider exception text.
+If provider invocation raises, response content is malformed JSON, or response content contains a non-standard JSON numeric constant, the exception propagates to the existing runtime phase boundary. `BoundedModelRuntime` then normalizes it to the existing terminal planner/synthesis exception result without echoing raw provider exception text.
 
 If provider content is valid JSON but does not satisfy the planner/synthesis structured contract, the existing runtime validation produces `invalid_plan` or `invalid_synthesis` as before.
 
@@ -117,7 +119,8 @@ The repository contains:
 - `BaseModelAdapter` as the provider implementation boundary;
 - deterministic `EchoModelAdapter` contract coverage;
 - runtime-owned `ModelPortProviderBridge`;
-- deterministic fake-provider bridge tests including a real `BoundedModelRuntime` integration path.
+- deterministic fake-provider bridge tests including a real `BoundedModelRuntime` integration path;
+- strict JSON transport decoding coverage, including rejection of non-standard numeric constants.
 
 No vendor SDK, credentials, network call, streaming, function-calling provider implementation, or provider-specific behavior is part of this milestone.
 

@@ -79,11 +79,7 @@ No external LLM/provider SDK was added.
 
 ## 2026-09-02 — Model Provider Contract v0.1
 
-Status: **READY FOR INTEGRATION — integration-review corrections complete; merge requires current-head CI green**
-
-Branch: `feat/model-provider-contract-v0.1`
-
-Integration PR: **#6 — `feat: establish model provider contract v0.1`**
+Status: **COMPLETE — merged via PR #6**
 
 Implemented:
 
@@ -92,16 +88,11 @@ Implemented:
 - `BaseModelAdapter` provider implementation boundary;
 - deterministic `EchoModelAdapter` used only for tests;
 - contract tests for typed request/response behavior and forbidden extra fields;
+- explicit separation between the runtime-facing `ModelPort` and lower-level `ModelProvider` transport contract;
 - provider-boundary documentation;
 - no vendor SDK, credentials, external network call, streaming, function calling, financial tool access, or financial write path.
 
-The initial contract-test corrections reached green PR CI at `795f9a9c84040242bfb8ee562ebf90b1c75c6664`. Integration review then identified an architectural-documentation mismatch: the existing `BoundedModelRuntime` depends on `ModelPort.plan()` / `ModelPort.synthesize()`, while this milestone introduces the lower-level `ModelProvider.complete()` transport contract. The branch was corrected to stop claiming that the runtime is already wired directly to `ModelProvider`.
-
-The corrected code/test/documentation anchor `30d1aae10187d715b055a63a246b67a4a6385723` passed PR CI #126 on the official GitHub-hosted runner. A final handoff/development-state synchronization follows that anchor; integration remains gated on the latest branch HEAD being green.
-
-### Boundary
-
-Current intended layering is:
+Integration review corrected an early architectural-documentation mismatch that had implied direct `BoundedModelRuntime -> ModelProvider` integration. The final design records the intended layering as:
 
 ```text
 BoundedModelRuntime
@@ -112,4 +103,8 @@ BoundedModelRuntime
         -> external model service
 ```
 
-The future bridge is explicitly out of scope for Model Provider Contract v0.1. It must be implemented and tested as a separate bounded increment before any real provider SDK is connected.
+Final PR head `6e204f11fee6a887580b9b4b06d2538831c6bbe8` passed GitHub-hosted PR CI #130. PR #6 was squash-merged to `main` at `c8f18f93b72cd0f4462e0f94a2cbbaebcdafa305`.
+
+### Next boundary
+
+The next bounded implementation should be a provider-independent `ModelPort` -> `ModelProvider` bridge with deterministic fake-provider tests. It must preserve all existing runtime fail-closed behavior and must not introduce a real provider SDK in the same increment.

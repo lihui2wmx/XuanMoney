@@ -27,18 +27,20 @@ This repository is the source of truth for implementation decisions. AI agents m
 12. Refresh `docs/HANDOFF.md` before ending a meaningful development session.
 13. Core GitHub Actions CI must use GitHub-hosted runners; do not use `self-hosted`. Prefer GitHub-maintained actions for checkout and runtime setup.
 14. A failing test or CI run is unfinished work, not a handoff state to describe as complete.
+15. Do not describe deterministic accounting decomposition as causal root-cause analysis unless a separate causal method is explicitly implemented and validated.
 
 ## Current milestone
 
-`Finance Agent v0.1`: deterministic profitability analysis, normalized tabular ingestion, explicit semantic mapping, period variance, validation, evidence, and a bounded orchestration boundary.
+`Finance Agent v0.1`: deterministic profitability analysis, normalized tabular ingestion, explicit semantic mapping, period variance, reconciled Profit Bridge, validation, evidence, and a bounded orchestration boundary.
 
 ## Exit conditions for v0.1
 
 - deterministic core profitability metrics are implemented and tested;
 - normalized CSV/XLSX ingestion has explicit semantic mapping and provenance;
 - period comparison is implemented and tested;
+- Profit Bridge line-item contribution reconciles exactly to net-profit change and is tested;
 - at least one accounting identity validator is implemented and tested;
-- findings are evidence-backed;
+- findings/results are evidence-backed;
 - the orchestration state cannot perform financial write actions;
 - CI runs the unit test suite on a GitHub-hosted runner;
 - architecture, development log, and canonical handoff reflect the implemented and verified state.

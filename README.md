@@ -97,3 +97,7 @@ Start with:
 `docs/HANDOFF.md` is the canonical current-state checkpoint so a new AI agent or contributor can continue without previous conversation context.
 
 Core CI uses GitHub-hosted runners (`ubuntu-latest`) and GitHub-maintained setup actions. Self-hosted runners are not used for project CI.
+
+## License
+
+XuanMoney is licensed under the [Apache License 2.0](LICENSE).

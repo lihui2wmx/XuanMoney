@@ -20,9 +20,10 @@ The active milestone is a read-only Finance Analysis Agent core that can:
 3. preserve file/worksheet/row provenance;
 4. compute core profitability metrics with `Decimal` arithmetic;
 5. perform period-over-period variance analysis;
-6. validate accounting identities;
-7. produce structured findings with evidence;
-8. expose the workflow through typed Python service/domain boundaries.
+6. decompose net-profit change with an exactly reconciled deterministic profit bridge;
+7. validate accounting identities and bridge reconciliation;
+8. produce structured findings with evidence;
+9. expose the workflow through typed Python service/domain boundaries.
 
 Out of scope for v0.1: payments, journal posting, tax filing, ERP write-back, autonomous financial execution, unrestricted SQL, and production authentication.
 
@@ -41,6 +42,7 @@ Semantic Registry + Ingestion Adapter
         Finance Kernel
    - profitability metrics
    - period variance
+   - profit bridge
              |
              v
           Validator
@@ -52,7 +54,7 @@ Semantic Registry + Ingestion Adapter
  Future LLM planner / synthesizer
 ```
 
-The LLM layer is intentionally not implemented yet. Financial facts and formulas are stabilized first.
+The LLM layer is intentionally not implemented yet. Financial facts, formulas, semantic mappings, and reconciliation are stabilized first.
 
 ## Development setup
 

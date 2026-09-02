@@ -1,12 +1,6 @@
-"""Provider-neutral model contracts and runtime bridge."""
+"""Provider-neutral model transport contracts."""
 
-from .bridge import ModelPortProviderBridge
 from .protocol import ModelProvider
 from .schemas import ModelRequest, ModelResponse
 
-__all__ = [
-    "ModelPortProviderBridge",
-    "ModelProvider",
-    "ModelRequest",
-    "ModelResponse",
-]
+__all__ = ["ModelProvider", "ModelRequest", "ModelResponse"]

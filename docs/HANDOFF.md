@@ -10,9 +10,11 @@ Development branch: `feat/finance-agent-v0.1`
 
 Integration PR: `#1 — feat: establish Finance Agent v0.1 deterministic core`
 
-Latest fully verified branch HEAD before this handoff-only update: `fe16fe996a3d5f216d860087a4d637bb400f6f01`
+The project is licensed under **Apache License 2.0** via the root `LICENSE` file. Contribution guidance is aligned with Apache-2.0 Section 5.
 
-GitHub Actions completed successfully at that HEAD on the GitHub-hosted `ubuntu-latest` runner. PR #1 is open and mergeable. This handoff update is documentation-only; a new agent must inspect current PR checks before any integration decision.
+Latest fully verified branch HEAD before the licensing documentation update: `fe16fe996a3d5f216d860087a4d637bb400f6f01`.
+
+Subsequent licensing-only commits added `LICENSE` and updated README/CONTRIBUTING/HANDOFF. A new agent must inspect current PR checks before any integration decision.
 
 ## Implemented capabilities
 
@@ -28,6 +30,7 @@ GitHub Actions completed successfully at that HEAD on the GitHub-hosted `ubuntu-
 - explicit Chinese/English semantic alias registry for the normalized v0.1 schema;
 - fail-closed behavior for missing required fields, duplicate headers, and ambiguous semantic mappings;
 - repository-native AI handoff workflow and open-source contribution workflow;
+- Apache-2.0 project licensing;
 - unit tests and GitHub Actions CI.
 
 ## Trust boundary
@@ -114,8 +117,7 @@ Do not add the next dimensional-analysis feature to PR #1. Keep this PR bounded.
 - no automatic component aggregation (for example selling/admin/R&D expense into operating expenses) exists yet;
 - no dimensional business data (department/product/customer) exists yet;
 - Profit Bridge explains arithmetic line-item contribution, not causal operational drivers;
-- no LLM, API, database, or UI integration exists yet;
-- repository licensing has not been selected in this branch; do not choose a license silently on behalf of maintainers.
+- no LLM, API, database, or UI integration exists yet.
 
 ## Recommended next bounded action
 

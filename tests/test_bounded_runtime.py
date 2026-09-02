@@ -102,6 +102,17 @@ def test_no_tool_plan_terminates_without_synthesis() -> None:
     assert model.synthesis_requests == []
 
 
+def test_whitespace_only_no_tool_reason_is_invalid() -> None:
+    model = FakeModel(plan_output={"kind": "no_tool", "reason": "   "})
+
+    result = BoundedModelRuntime(model=model).run("Unsupported request")
+
+    assert result.status is RuntimeStatus.PLANNER_FAILED
+    assert result.runtime_failure is not None
+    assert result.runtime_failure.code is RuntimeFailureCode.INVALID_PLAN
+    assert model.synthesis_requests == []
+
+
 def test_unknown_tool_from_planner_fails_closed_without_synthesis() -> None:
     model = FakeModel(
         plan_output={
@@ -190,14 +201,17 @@ def test_invalid_planner_output_never_reaches_tool_or_synthesis() -> None:
     assert model.synthesis_requests == []
 
 
-def test_planner_exception_terminates_run() -> None:
-    model = FakeModel(plan_output={}, plan_error=RuntimeError("provider unavailable"))
+def test_planner_exception_terminates_run_without_echoing_provider_error() -> None:
+    secret = "provider-secret-diagnostic"
+    model = FakeModel(plan_output={}, plan_error=RuntimeError(secret))
 
     result = BoundedModelRuntime(model=model).run("Analyze finance")
 
     assert result.status is RuntimeStatus.PLANNER_FAILED
     assert result.runtime_failure is not None
     assert result.runtime_failure.code is RuntimeFailureCode.PLANNER_EXCEPTION
+    assert result.runtime_failure.message == "planner invocation failed"
+    assert secret not in result.model_dump_json()
     assert model.synthesis_requests == []
 
 
@@ -213,10 +227,23 @@ def test_invalid_synthesis_is_rejected_without_retry() -> None:
     assert len(model.synthesis_requests) == 1
 
 
-def test_synthesis_exception_is_not_retried() -> None:
+def test_whitespace_only_synthesis_is_rejected() -> None:
+    model = FakeModel(plan_output=financial_plan(), synthesis_output={"answer": "   "})
+
+    result = BoundedModelRuntime(model=model).run("How did profitability change?")
+
+    assert result.status is RuntimeStatus.SYNTHESIS_FAILED
+    assert result.runtime_failure is not None
+    assert result.runtime_failure.code is RuntimeFailureCode.INVALID_SYNTHESIS
+    assert len(model.planning_requests) == 1
+    assert len(model.synthesis_requests) == 1
+
+
+def test_synthesis_exception_is_not_retried_or_echoed() -> None:
+    secret = "provider-secret-diagnostic"
     model = FakeModel(
         plan_output=financial_plan(),
-        synthesis_error=RuntimeError("provider unavailable"),
+        synthesis_error=RuntimeError(secret),
     )
 
     result = BoundedModelRuntime(model=model).run("How did profitability change?")
@@ -224,5 +251,7 @@ def test_synthesis_exception_is_not_retried() -> None:
     assert result.status is RuntimeStatus.SYNTHESIS_FAILED
     assert result.runtime_failure is not None
     assert result.runtime_failure.code is RuntimeFailureCode.SYNTHESIS_EXCEPTION
+    assert result.runtime_failure.message == "synthesizer invocation failed"
+    assert secret not in result.model_dump_json()
     assert len(model.planning_requests) == 1
     assert len(model.synthesis_requests) == 1

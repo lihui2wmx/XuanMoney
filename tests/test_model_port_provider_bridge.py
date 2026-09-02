@@ -3,13 +3,10 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 
-from xuanmoney.model import (
-    ModelPortProviderBridge,
-    ModelRequest,
-    ModelResponse,
-)
+from xuanmoney.model import ModelRequest, ModelResponse
 from xuanmoney.runtime import (
     BoundedModelRuntime,
+    ModelPortProviderBridge,
     PlanningRequest,
     RuntimeFailureCode,
     RuntimeStatus,

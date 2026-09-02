@@ -1,4 +1,5 @@
 from xuanmoney.model.adapter import EchoModelAdapter
+from xuanmoney.model.schemas import ModelRequest
 
 
 class FakeRuntime:
@@ -14,6 +15,6 @@ def test_runtime_can_use_provider_contract():
     provider = EchoModelAdapter()
     runtime = FakeRuntime(provider)
 
-    result = runtime.run({"message": "analyze revenue"})
+    result = runtime.run(ModelRequest(prompt="analyze revenue"))
 
     assert result is not None

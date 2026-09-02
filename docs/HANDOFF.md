@@ -4,7 +4,7 @@
 
 Milestone: **ModelPort Provider Bridge v0.1**
 
-Status: **READY FOR INTEGRATION REVIEW — PR #8 open; current-head PR CI verification pending**
+Status: **READY FOR SECOND INTEGRATION REVIEW — first review blocker corrected; final current-head CI pending**
 
 Development branch: `feat/model-port-provider-bridge-v0.1`
 
@@ -21,8 +21,8 @@ The branch closes the previously explicit gap between the runtime-facing `ModelP
 ```text
 BoundedModelRuntime
         -> ModelPort
-        -> ModelPortProviderBridge
-        -> ModelProvider
+        -> ModelPortProviderBridge   # xuanmoney.runtime
+        -> ModelProvider             # xuanmoney.model transport
         -> Provider Adapter
         -> external model service (future)
 ```
@@ -44,6 +44,18 @@ For each reached model phase, the bridge:
 6. returns the decoded value as an untrusted object to `BoundedModelRuntime`.
 
 The bridge deliberately does not validate `PlannerDecision` or `SynthesisOutput`. Those checks remain runtime-owned.
+
+## Package dependency boundary
+
+The first integration review found one blocker: the initial bridge location under `xuanmoney.model` inverted the intended dependency direction by making the lower-level provider transport package depend on runtime contracts.
+
+That blocker is corrected:
+
+- `ModelPortProviderBridge` now lives in `xuanmoney.runtime.provider_bridge`;
+- `xuanmoney.runtime` exports the bridge;
+- `xuanmoney.model` exports only `ModelProvider`, `ModelRequest`, and `ModelResponse` and remains transport-only;
+- architecture rules explicitly require `runtime bridge -> model provider transport`, never the reverse;
+- response JSON Schemas are copied into each transport request so provider-side mutation cannot alter cached schemas for later calls.
 
 ## Preserved runtime boundary
 
@@ -83,8 +95,9 @@ pytest
 
 Verified anchors:
 
-- `43b14f3a43bac781d83a984cccc916349a080e6d`: implementation/bridge tests, push CI #141 **success**;
-- `454ab43373592b034a8f441016009a551f5c1bbe`: documentation-synchronized pre-PR head, push CI #148 **success**.
+- `43b14f3a43bac781d83a984cccc916349a080e6d`: initial implementation/bridge tests, push CI #141 **success**;
+- `454ab43373592b034a8f441016009a551f5c1bbe`: initial documentation-synchronized pre-PR head, push CI #148 **success**;
+- `12e20c70f9b495c6837ed9f98d3d975d8e3b06b6`: package-layering correction, PR CI #167 **success**.
 
 The bridge test slice covers:
 
@@ -97,7 +110,7 @@ The bridge test slice covers:
 - malformed synthesis JSON -> terminal synthesis exception without retry;
 - exactly one provider call per reached phase.
 
-PR #8 is non-draft. This PR-state handoff commit triggers fresh current-head push/PR checks; integration remains gated on those checks and review.
+This final review-state development-log/handoff synchronization follows the corrected green anchor and triggers fresh current-head checks.
 
 ## Scope exclusions
 
@@ -124,8 +137,8 @@ This milestone contains no:
 
 ## Recommended next bounded action
 
-**Verify current-head PR #8 CI and perform integration review only.**
+**Verify current-head PR #8 CI and perform the second integration review only.**
 
-The review should confirm that runtime validation and execution policy remain in `BoundedModelRuntime`, provider calls are one-per-phase without retry, and no real provider SDK or execution-surface expansion entered the branch.
+The second review should confirm that the package dependency direction is corrected, runtime validation/execution policy remains in `BoundedModelRuntime`, provider calls are one-per-phase without retry, and no real provider SDK or execution-surface expansion entered the branch.
 
-If current-head CI is green and review finds no blocker, PR #8 is eligible for squash integration. Do not add a real provider adapter to PR #8.
+If current-head CI is green and the second review finds no blocker, PR #8 is eligible for squash integration. Do not add a real provider adapter to PR #8.

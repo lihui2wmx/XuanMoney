@@ -182,6 +182,30 @@ def test_invalid_provider_json_fails_without_retry() -> None:
     assert len(provider.requests) == 1
 
 
+def test_non_standard_json_numeric_constant_fails_without_retry() -> None:
+    provider = FakeProvider(
+        outputs=[
+            ModelResponse(
+                content=(
+                    '{"kind":"tool_call","tool":"analyze_financials",'
+                    '"arguments":{"value":NaN}}'
+                ),
+                provider="fake",
+            )
+        ]
+    )
+
+    result = BoundedModelRuntime(
+        model=ModelPortProviderBridge(provider=provider)
+    ).run("Analyze finance")
+
+    assert result.status is RuntimeStatus.PLANNER_FAILED
+    assert result.runtime_failure is not None
+    assert result.runtime_failure.code is RuntimeFailureCode.PLANNER_EXCEPTION
+    assert result.runtime_failure.message == "planner invocation failed"
+    assert len(provider.requests) == 1
+
+
 def test_provider_exception_is_sanitized_by_runtime() -> None:
     secret = "provider-secret-diagnostic"
     provider = FakeProvider(outputs=[RuntimeError(secret)])

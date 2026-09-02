@@ -7,7 +7,7 @@ from xuanmoney.model.protocol import ModelProvider
 
 class FakeProvider(ModelProvider):
     def complete(self, request: ModelRequest) -> ModelResponse:
-        return ModelResponse(content="ok")
+        return ModelResponse(content="ok", provider="fake")
 
 
 def test_model_request_rejects_unknown_fields():
@@ -17,10 +17,11 @@ def test_model_request_rejects_unknown_fields():
 
 def test_model_response_rejects_unknown_fields():
     with pytest.raises(ValidationError):
-        ModelResponse(content="ok", unknown="blocked")
+        ModelResponse(content="ok", provider="fake", unknown="blocked")
 
 
 def test_provider_contract_returns_response():
     provider = FakeProvider()
     result = provider.complete(ModelRequest(prompt="analyze"))
     assert result.content == "ok"
+    assert result.provider == "fake"

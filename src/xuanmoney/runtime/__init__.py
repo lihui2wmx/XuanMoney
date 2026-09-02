@@ -14,10 +14,12 @@ from xuanmoney.runtime.engine import (
     RuntimeResult,
     RuntimeStatus,
 )
+from xuanmoney.runtime.provider_bridge import ModelPortProviderBridge
 
 __all__ = [
     "BoundedModelRuntime",
     "ModelPort",
+    "ModelPortProviderBridge",
     "NoToolPlan",
     "PlannerDecision",
     "PlanningRequest",

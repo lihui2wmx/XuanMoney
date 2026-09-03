@@ -4,13 +4,19 @@
 
 Milestone: **OpenAI Provider Adapter v0.1**
 
-Status: **ACTIVE — implementation and deterministic CI baseline complete; integration review pending**
+Status: **READY FOR INTEGRATION — implementation, deterministic CI, governance log, and integration review complete**
 
 Development branch: `feat/openai-provider-adapter-v0.1`
 
 Integration PR: **#22 — `feat: add OpenAI provider adapter v0.1`**
 
 Base: `main@17de31993172966fa448b0d142ca37a4b6d328ac`.
+
+Current pre-merge head before this handoff synchronization:
+
+```text
+c21232783ee59bf932a545ca5507823ee234a0ff
+```
 
 The preceding readiness/design milestone was integrated through PR #20 and post-merge synchronization PR #21.
 
@@ -63,27 +69,27 @@ Implemented in PR #22:
 - `ProtectedSecret.reveal()` occurs only in trusted SDK client construction;
 - SDK client construction applies `request_timeout_seconds` and explicitly sets `max_retries=0`;
 - one `OpenAIProviderAdapter.complete()` maps to at most one synchronous `client.responses.create()`;
-- existing repository transport contract is preserved: `ModelRequest.prompt -> instructions` and deterministic JSON-safe `ModelRequest.context -> input`;
-- the readiness-document mismatch describing nonexistent `ModelRequest.instructions/input` fields is corrected in `docs/OPENAI_PROVIDER_ADAPTER.md` rather than widening `xuanmoney.model`;
+- existing transport contract is preserved: `ModelRequest.prompt -> instructions` and deterministic JSON-safe `ModelRequest.context -> input`;
+- the readiness-document mismatch describing nonexistent `ModelRequest.instructions/input` fields is corrected without widening `xuanmoney.model`;
 - no provider-native `tools`, `stream`, or `background` argument is sent;
 - successful nonblank `output_text` maps to `ModelResponse(content=..., provider="openai")` with empty metadata;
 - missing/blank output fails closed as `INVALID_RESPONSE`;
-- OpenAI authentication/permission, timeout, rate-limit, service, bad-request/configuration, connection, and unexpected exceptions normalize to the existing safe `ProviderFailureCode` taxonomy;
-- normalized failures do not retain raw diagnostics, credential material, exception cause, or exception context;
+- authentication/permission, timeout, rate-limit, service, bad-request/configuration, connection, and unexpected exceptions normalize to the existing safe `ProviderFailureCode` taxonomy;
+- normalized failures retain no raw diagnostics, credential material, exception cause, or exception context;
 - invalid provider IDs, missing credentials, and invalid SDK client surfaces fail closed;
 - deterministic fake-SDK integration executes through registry, injected environment resolver, trusted factory, adapter, `ModelPortProviderBridge`, and `BoundedModelRuntime`.
 
 ## Verification
 
-Implementation/test head before documentation synchronization:
+- implementation/test head `26d317d1398b717d15d468288db3dab866231c6c`: PR CI #346 success;
+- documentation-synchronized head `564f8becdb06ffd6ea653e8281d5e8035707ffd8`: PR CI #350 success;
+- development-log synchronized head `c21232783ee59bf932a545ca5507823ee234a0ff`: PR CI #352 success;
+- branch was `behind_by=0` and PR #22 mergeable at the latest integration check;
+- no review threads are present;
+- integration review `5103040205` found no remaining code, architecture, provider-safety, dependency-direction, or bounded-scope blocker after the required development-log synchronization;
+- the execution container cannot resolve `github.com`, so no local pytest result is claimed; GitHub-hosted CI is the executable verification authority for this session.
 
-```text
-26d317d1398b717d15d468288db3dab866231c6c
-```
-
-GitHub Actions PR CI #346 passed on GitHub-hosted `ubuntu-latest` / Python 3.12, including installation of the bounded OpenAI SDK dependency and the full deterministic test suite.
-
-The execution container still cannot resolve `github.com`, so no local pytest result is claimed; GitHub-hosted CI remains the executable verification authority for this session.
+This handoff update advances the branch beyond `c2123278…`; current-head GitHub-hosted CI must pass once more before merge.
 
 ## Preserved invariants
 
@@ -112,19 +118,6 @@ The adapter adds no hidden retry, fallback, alternate model, provider-native too
 
 ## Recommended next bounded action
 
-**Complete PR #22 integration review after current-head CI passes.**
-
-The review must confirm:
-
-1. only `xuanmoney.providers` imports `openai`;
-2. `max_retries=0` and configured timeout are enforced at client construction;
-3. the existing `ModelRequest(prompt, context)` schema remains unchanged;
-4. one `complete()` call cannot issue a second provider request;
-5. no provider-native tools, streaming, background mode, retry, or fallback surface exists;
-6. stable failures and secret non-disclosure hold without retained exception chains;
-7. registry/composer/bridge/runtime boundaries remain unchanged;
-8. branch remains current/mergeable and current-head GitHub-hosted CI is green.
-
-If those exit conditions hold, integrate PR #22 and perform a documentation-only post-merge synchronization before selecting any new provider/runtime capability.
+**Verify current-head PR CI, then squash-merge PR #22 if the head is unchanged, still mergeable, and no review/thread blocker appears. After merge, perform a documentation-only post-merge synchronization before selecting any new provider/runtime capability.**
 
 Do **not** add a second provider, live-network CI, retry/backoff, fallback, streaming, provider-native tool calling, new analysis tools, runtime/finance expansion, or financial write behavior in the integration increment.

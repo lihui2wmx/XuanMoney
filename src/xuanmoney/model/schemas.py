@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict
+import json
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ModelRequest(BaseModel):
@@ -12,7 +14,12 @@ class ModelRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     prompt: str
-    context: dict[str, object] = {}
+    context: dict[str, object] = Field(default_factory=dict)
+
+    @field_validator("context")
+    @classmethod
+    def validate_context_is_json_safe(cls, value: dict[str, object]) -> dict[str, object]:
+        return _validate_json_safe_mapping(value, field_name="context")
 
 
 class ModelResponse(BaseModel):
@@ -22,4 +29,21 @@ class ModelResponse(BaseModel):
 
     content: str
     provider: str
-    metadata: dict[str, object] = {}
+    metadata: dict[str, object] = Field(default_factory=dict)
+
+    @field_validator("metadata")
+    @classmethod
+    def validate_metadata_is_json_safe(cls, value: dict[str, object]) -> dict[str, object]:
+        return _validate_json_safe_mapping(value, field_name="metadata")
+
+
+def _validate_json_safe_mapping(
+    value: dict[str, object], *, field_name: str
+) -> dict[str, object]:
+    """Reject non-JSON transport values without echoing their contents."""
+
+    try:
+        json.dumps(value, allow_nan=False)
+    except (TypeError, ValueError):
+        raise ValueError(f"{field_name} must contain only JSON-safe values") from None
+    return value

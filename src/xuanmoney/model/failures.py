@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, computed_field
 
 
 class ProviderFailureCode(StrEnum):
@@ -32,17 +32,22 @@ class ProviderFailure(BaseModel):
     """Public provider failure safe for serialization.
 
     Raw provider diagnostics, exception text, request payloads, and credentials are
-    intentionally absent from this model.
+    intentionally absent. The public message is derived only from the stable code and
+    cannot be supplied by a provider adapter.
     """
 
     model_config = ConfigDict(extra="forbid")
 
     code: ProviderFailureCode
-    message: str
+
+    @computed_field
+    @property
+    def message(self) -> str:
+        return _SAFE_MESSAGES[self.code]
 
     @classmethod
     def from_code(cls, code: ProviderFailureCode) -> "ProviderFailure":
-        return cls(code=code, message=_SAFE_MESSAGES[code])
+        return cls(code=code)
 
 
 class ProviderTransportError(RuntimeError):

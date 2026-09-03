@@ -2,19 +2,17 @@
 
 ## Current status
 
-Milestone: **Provider Adapter Credential Injection v0.1**
+Milestone: **Provider Adapter Credential Injection v0.1 — COMPLETE**
 
-Status: **READY FOR INTEGRATION — implementation reviewed; final current-head CI required**
+Status: **INTEGRATED — post-merge handoff synchronization**
 
-Development branch: `feat/provider-adapter-credential-injection-v0.1`
+Main integration commit: `572ac05873ba3ff3cebd182fc72d07bb2f2dec65`
 
-Integration PR: **#16 — `feat: add provider adapter credential injection v0.1`**
-
-Base: `main@3dc2e5883556048d378b23228d85598a3d620736`, which contains Environment Credential Resolver v0.1 and its post-merge handoff synchronization.
+Merged PR: **#16 — `feat: add provider adapter credential injection v0.1`**
 
 The project is licensed under **Apache License 2.0**.
 
-## Implemented composition boundary
+## Integrated provider composition boundary
 
 ```text
 ProviderConfiguration              CredentialResolver
@@ -28,7 +26,7 @@ ProviderConfiguration              CredentialResolver
                         |
                         v
               ProviderAdapterFactory
-              # trusted construction boundary
+              # trusted reveal/construction boundary
                         |
                         v
                   ModelProvider
@@ -40,27 +38,26 @@ ProviderConfiguration              CredentialResolver
               BoundedModelRuntime
 ```
 
-Implemented and reviewed:
+Integrated through PR #16:
 
-- new application-owned `xuanmoney.providers` package;
+- application-owned `xuanmoney.providers` package;
 - `ProviderAdapterFactory` protocol for trusted provider/client construction;
-- `ProviderAdapterComposer` accepting a `CredentialResolver` plus factory;
-- optional credential references are resolved exactly once before adapter construction;
-- the generic composer never calls `ProtectedSecret.reveal()`;
-- only a trusted factory implementation receives `ProtectedSecret` and may explicitly reveal it for client construction;
-- unavailable credentials map to sanitized `ProviderFailureCode.CREDENTIAL_UNAVAILABLE`;
-- unsupported credential sources map to sanitized `ProviderFailureCode.INVALID_CONFIGURATION`;
-- unexpected resolver failures and invalid resolver return types fail closed before factory invocation;
-- adapter/factory construction failures normalize to sanitized `ProviderFailureCode.TRANSPORT_ERROR`;
-- a factory result without a callable `complete()` surface is rejected immediately as `TRANSPORT_ERROR` rather than leaking into runtime;
-- sanitized failures are raised outside source exception handlers so secret-bearing resolver/factory diagnostics are not retained as cause/context chains;
-- deterministic fake factory/adapter tests exercise a complete `ModelPortProviderBridge -> BoundedModelRuntime` flow;
-- test secret material is absent from provider request serialization, runtime result serialization, public failures, composer/factory/adapter representations, and model-callable payloads;
-- `docs/PROVIDER_COMPOSITION.md` defines the trust and package boundary.
+- `ProviderAdapterComposer` combines existing provider configuration and credential-resolution contracts;
+- configured credentials resolve once to `ProtectedSecret` before adapter construction;
+- generic composition code never calls `ProtectedSecret.reveal()`;
+- explicit secret reveal is confined to a trusted factory/client-construction implementation;
+- unavailable credentials normalize to sanitized `ProviderFailureCode.CREDENTIAL_UNAVAILABLE`;
+- unsupported credential sources normalize to `ProviderFailureCode.INVALID_CONFIGURATION`;
+- unexpected resolver failures and invalid resolver return values fail closed before factory invocation;
+- adapter/factory construction failures normalize to sanitized `ProviderFailureCode.TRANSPORT_ERROR` without retaining raw cause/context diagnostics;
+- factory results without a callable `complete()` surface fail closed at composition time;
+- deterministic fake adapter/factory tests execute through `ModelPortProviderBridge` and `BoundedModelRuntime`;
+- test credential material remains absent from provider request serialization, runtime result serialization, public failures, and object representations;
+- `docs/PROVIDER_COMPOSITION.md` documents the trusted reveal and failure-normalization boundary.
 
-## Package direction
+## Preserved package and runtime boundaries
 
-Allowed:
+Allowed dependency direction:
 
 ```text
 xuanmoney.providers   -> xuanmoney.credentials
@@ -69,7 +66,7 @@ xuanmoney.credentials -> xuanmoney.model
 xuanmoney.runtime     -> xuanmoney.model
 ```
 
-Forbidden:
+Forbidden reverse dependencies:
 
 ```text
 xuanmoney.model       -X-> xuanmoney.credentials
@@ -77,60 +74,62 @@ xuanmoney.model       -X-> xuanmoney.providers
 xuanmoney.credentials -X-> xuanmoney.providers
 ```
 
-Runtime, tools, and finance code do not receive resolved secret values.
-
-## Preserved runtime/provider policy
+Runtime invariant remains:
 
 ```text
 single plan -> at most one registered tool -> single synthesis -> terminal
-max_attempts = 1
 ```
 
-No Finance Kernel, controlled Tool Registry, runtime execution-sequence, provider retry, or financial-write behavior is changed.
-
-## Explicitly out of scope
-
-- OpenAI/Anthropic/Gemini or other vendor SDKs;
-- external provider network calls;
-- provider-specific HTTP/authentication payloads;
-- retry/backoff or provider fallback;
-- streaming or provider-specific function calling;
-- secret-manager integration or credential persistence;
-- provider logging/metrics infrastructure;
-- new model-callable tools;
-- SQL/Python/shell/filesystem expansion;
-- financial write actions.
+Provider configuration remains `max_attempts = 1`.
 
 ## Verification
 
-Canonical command:
-
-```bash
-python -m pip install -e ".[dev]"
-pytest
-```
-
-Verified implementation head before this final handoff sync:
+Final PR #16 head:
 
 ```text
-8b357c947c80eb44adaf2d091f27f3d35aa717fd
+9c1e5dbc47931c5cc0720811a3c5799e7a575fca
 ```
 
 Verification:
 
 - initial implementation/docs anchor `707523b7744d9fbba47f70fb8e3365c4a331bcb8`: PR CI #284 success;
-- fail-closed provider-result hardening head `8b357c947c80eb44adaf2d091f27f3d35aa717fd`: PR CI #294 success;
+- invalid-provider-result hardening head `8b357c947c80eb44adaf2d091f27f3d35aa717fd`: PR CI #294 success;
+- final canonical-doc synchronized head: PR CI #298 success;
 - GitHub-hosted `ubuntu-latest` / Python 3.12;
-- PR #16 non-draft and mergeable at review;
-- branch `behind_by=0`;
-- changed-file audit: 7 files, with production changes limited to new `xuanmoney.providers` package;
-- no review submissions or unresolved review threads at review time;
-- no runtime, finance, tool, dependency, SDK, network, retry/fallback, or financial-write expansion.
+- final branch was `behind_by=0` and PR mergeable;
+- no unresolved review threads;
+- final integration review ID `5096853542` found no remaining architecture or safety blocker;
+- squash merge commit: `572ac05873ba3ff3cebd182fc72d07bb2f2dec65`.
 
-This handoff synchronization advances the branch beyond the verified implementation head, so latest current-head CI must also pass before merge.
+## Current limitations
+
+There is still no controlled provider-factory selection or real external model provider implementation:
+
+- callers currently inject a `ProviderAdapterFactory` directly into `ProviderAdapterComposer`;
+- no fixed `provider_id -> factory` registry exists;
+- no OpenAI/Anthropic/Gemini or other vendor SDK;
+- no external provider network call;
+- no provider-specific HTTP/auth payload implementation;
+- no provider retry/backoff or fallback;
+- no streaming or provider-specific function calling;
+- no secret-manager integration or credential persistence;
+- no production API/UI;
+- no new model-callable tool or financial write capability.
 
 ## Recommended next bounded action
 
-**If latest current-head PR #16 CI is green, record final integration review and squash-merge PR #16.**
+**Start `Controlled Provider Factory Registry v0.1` on a fresh feature branch.**
 
-After integration, refresh canonical handoff on a documentation-only branch before selecting the next vendor-provider boundary.
+The bounded increment should:
+
+1. define an immutable application-owned registry mapping validated `provider_id` strings to trusted `ProviderAdapterFactory` implementations;
+2. expose lookup/build behavior without a public dynamic `register()` API;
+3. reject unknown provider identifiers with a stable sanitized `ProviderFailureCode.INVALID_CONFIGURATION` failure;
+4. ensure provider selection occurs from application configuration only, never from model output or model-callable tool arguments;
+5. prohibit dynamic imports, entry-point/plugin discovery, filesystem discovery, fallback to another provider, or retry-based provider switching;
+6. compose the selected factory through the existing `ProviderAdapterComposer` and deterministic fake resolver/factory tests;
+7. prove duplicate/ambiguous provider identifiers fail closed at registry construction;
+8. preserve credential reveal confinement, JSON-safe model transport, `max_attempts = 1`, and the bounded runtime invariant;
+9. keep vendor SDKs and external network calls out of this milestone.
+
+Do **not** combine this milestone with OpenAI/Anthropic/Gemini SDK installation, external provider calls, retry/backoff, fallback, streaming, new analysis tools, or financial write behavior.

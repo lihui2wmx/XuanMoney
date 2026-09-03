@@ -152,38 +152,30 @@ No real provider SDK, credential resolver, environment read, network call, retry
 
 ## 2026-09-03 — Credential Resolver Boundary v0.1
 
-Status: **ACTIVE — implementation and deterministic tests added; current-head CI pending**
-
-Branch: `feat/credential-resolver-boundary-v0.1`
-
-Base: `main@63bac1c7025dc7cd712d863e8f144c4e3328bc53`.
+Status: **COMPLETE — merged via PR #12**
 
 Implemented:
 
 - application-owned `CredentialResolver` protocol accepting the existing non-secret `CredentialReference`;
-- runtime-only `ProtectedSecret` wrapper with explicit `reveal()` for a future trusted provider integration boundary;
+- runtime-only immutable `ProtectedSecret` with explicit `reveal()` for a future trusted provider integration boundary;
 - redacted `str`, `repr`, and formatted output;
 - JSON and pickle serialization fail closed rather than expose credential values;
-- `ProtectedSecret` rejects empty values and is immutable after construction;
+- `ProtectedSecret` rejects empty values;
 - stable `CredentialResolutionFailureCode` taxonomy for unsupported source and unavailable credentials;
 - sanitized `CredentialResolutionError` that stores no reference identifier, secret value, or raw resolver diagnostic;
 - deterministic fake/in-memory resolver tests covering successful resolution, missing references, configuration non-mutation, serialization blocking, redaction, immutability, and diagnostic/reference non-disclosure;
-- `docs/CREDENTIALS.md` defining the application-owned secret-resolution trust boundary;
-- no environment-variable read, secret manager, provider SDK, network call, retry/fallback, runtime/tool/finance expansion, or financial write path.
+- missing-reference fake resolution avoids retaining a lower-level exception cause/context containing reference material;
+- provider transport hardening requiring strict JSON-safe `ModelRequest.context` and `ModelResponse.metadata`;
+- arbitrary Python objects including `ProtectedSecret` and non-standard `NaN`/`Infinity` values rejected before provider transport;
+- invalid transport inputs hidden from Pydantic validation-error strings;
+- mutable transport dict defaults replaced with `Field(default_factory=dict)`;
+- package direction preserved as `xuanmoney.credentials -> xuanmoney.model`, never the reverse;
+- `docs/CREDENTIALS.md` and `docs/PROVIDER_CONTRACT.md` updated for the integrated safety boundary.
 
-### Preserved boundary
+Pre-hardening head `0ebfee86048a09f1af5d9ab490624c87dd491eba` passed PR CI #237. Final head `3640269d2e47551c77bce97e9b8fbccfd4714d54` passed PR CI #248 on GitHub-hosted `ubuntu-latest` / Python 3.12. Integration review `5096676763` found no remaining architecture or safety blocker, and PR #12 was squash-merged to `main` at `84edd3e90c9c5c2551e5314410bd7eb554cfe75e`.
 
-```text
-ProviderConfiguration -> CredentialReference
-                             |
-                             v
-                    CredentialResolver
-                             |
-                             v
-                       ProtectedSecret
-                             |
-                             v
-                future provider integration
-```
+No real environment-variable read, secret manager, provider SDK, network call, retry/backoff, fallback, streaming, logging infrastructure, new model-callable tool, execution-surface expansion, or financial write path was introduced.
 
-The lower-level model package remains non-secret and serializable; resolved secret values remain outside model/runtime/tool/finance payloads.
+### Next boundary
+
+Start **Environment Credential Resolver v0.1** as a separate bounded increment. Implement a concrete application-owned resolver for the existing environment reference type using deterministic injected mappings first; keep raw values inside `ProtectedSecret`, preserve sanitized missing-reference behavior and strict model transport, and do not combine this work with any real provider SDK or network call.

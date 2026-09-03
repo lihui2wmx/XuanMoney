@@ -13,8 +13,9 @@ This repository is the source of truth for implementation decisions. AI agents m
 7. `docs/PROVIDER_CONTRACT.md`
 8. `docs/PROVIDER_SAFETY.md`
 9. `docs/CREDENTIALS.md`
-10. the relevant section of `docs/DEVELOPMENT_LOG.md`
-11. implementation and tests touched by the active bounded increment
+10. `docs/PROVIDER_COMPOSITION.md`
+11. the relevant section of `docs/DEVELOPMENT_LOG.md`
+12. implementation and tests touched by the active bounded increment
 
 ## Working model
 
@@ -25,7 +26,7 @@ This repository is the source of truth for implementation decisions. AI agents m
 5. Material agent conclusions must carry evidence that identifies source fields, periods, dimensions/members when applicable, and available provenance.
 6. The project remains read-only. Do not add payment, posting, filing, deletion, unrestricted SQL, or other financial write actions without an explicit milestone change.
 7. Do not let an LLM silently define accounting formulas, metric semantics, permissions, validation rules, unknown spreadsheet mappings, or business dimensions.
-8. Any new metric, semantic mapping rule, validator, model-callable tool, runtime transition, provider boundary, provider bridge, provider configuration contract, provider failure contract, or credential-resolution boundary requires tests covering normal and edge cases.
+8. Any new metric, semantic mapping rule, validator, model-callable tool, runtime transition, provider boundary, provider bridge, provider configuration contract, provider failure contract, credential-resolution boundary, or provider-composition boundary requires tests covering normal and edge cases.
 9. Prefer explicit state transitions and typed models over open-ended autonomous loops.
 10. Fail closed on ambiguous financial semantics. Unknown data must not be guessed into canonical finance fields.
 11. Record milestone-level changes in `docs/DEVELOPMENT_LOG.md`.
@@ -50,22 +51,30 @@ This repository is the source of truth for implementation decisions. AI agents m
 30. Revealing a protected credential is an explicit trusted-boundary operation. Do not reveal a secret for diagnostics, validation messages, logging, evidence, prompt/model context, or test snapshots.
 31. `ModelRequest.context` and `ModelResponse.metadata` must remain strict JSON-safe transport envelopes; arbitrary Python objects and non-standard JSON numeric constants must fail closed without exposing invalid input values in validation diagnostics.
 32. Concrete credential resolvers must use application-owned composition inputs. The environment resolver receives an injected `Mapping[str, str]`; credential resolution code must not give model/runtime/tool/finance layers direct environment access or expose the backing mapping through representation/errors.
+33. `xuanmoney.providers` is an application-owned composition layer and may depend on `xuanmoney.credentials` and `xuanmoney.model`; neither lower-level package may depend upward on it. Generic composition code must not reveal protected credentials. Only an explicitly trusted adapter/client-construction factory may call `ProtectedSecret.reveal()`, and raw values must not persist beyond that construction boundary.
 
 ## Current milestone
 
-`Environment Credential Resolver v0.1`: **COMPLETE — merged via PR #14**.
+`Provider Adapter Credential Injection v0.1`: **ACTIVE**.
 
-Completed properties include a concrete application-owned `EnvironmentCredentialResolver`, injected mapping composition without implicit `os.environ` reads, protected-secret-only success output, sanitized missing/empty/non-string/lookup-failure/unsupported-source behavior without retained diagnostic chains, and deterministic tests independent of host environment contents.
+This milestone defines the application-owned composition path from existing `ProviderConfiguration` and `CredentialResolver` contracts into a `ModelProvider`. The generic composer resolves a `ProtectedSecret` but never reveals it; a trusted `ProviderAdapterFactory` owns the only permitted explicit reveal operation for provider-client construction.
 
-PR #14 final head `7646a1d38e105aeb844bba01a96dc0395988273d` passed GitHub-hosted PR CI #269 and was squash-merged to `main` at `67c957eb199efc8ee8b7c8955635e667237b58f7` after integration review `5096782358` found no remaining blocker.
+## Exit conditions for the current milestone
 
-No provider SDK, provider network call, retry/backoff, fallback, secret manager, new model-callable tool, runtime/finance/tool expansion, or financial-write path was introduced.
-
-## Next recommended milestone
-
-`Provider Adapter Credential Injection v0.1`: define and test the trusted application-owned composition path from `ProviderConfiguration` and `CredentialResolver` into a provider adapter without introducing a real vendor SDK or network call. Secret reveal must remain confined to that trusted adapter-construction boundary and must never enter model transport, runtime results, evidence, logs, or model-callable payloads.
-
-Use deterministic fake adapter/client tests first. Do not combine this milestone with OpenAI/Anthropic/Gemini SDK installation or external provider network calls.
+- `ProviderAdapterComposer` accepts a `CredentialResolver` and trusted `ProviderAdapterFactory`;
+- optional `ProviderConfiguration.credential_ref` is resolved at most once before adapter construction;
+- generic composition code never calls `ProtectedSecret.reveal()`;
+- only the trusted factory/client-construction implementation may explicitly reveal the secret;
+- credential-resolution failures normalize to stable sanitized provider failures before adapter construction, without retry/fallback or retained diagnostic cause/context chains;
+- adapter/factory construction failures normalize to a stable sanitized provider transport failure without exposing raw diagnostics or credentials;
+- invalid resolver return types fail closed before adapter construction;
+- a deterministic credential-consuming fake adapter runs through `ModelPortProviderBridge` and `BoundedModelRuntime`;
+- tests prove the fake secret is absent from `ModelRequest`, runtime-result serialization, public failures, and object representations;
+- package direction remains `xuanmoney.providers -> xuanmoney.credentials -> xuanmoney.model` plus `xuanmoney.providers -> xuanmoney.model`, never the reverse;
+- `ProtectedSecret`, strict JSON-safe provider transport, `max_attempts = 1`, bounded runtime execution, Finance Kernel, and controlled Tool Registry remain unchanged;
+- no vendor SDK, external provider network call, retry/backoff, fallback, streaming, new tool, or financial-write path is introduced;
+- CI passes on the official GitHub-hosted runner;
+- `docs/PROVIDER_COMPOSITION.md`, development log, and canonical handoff reflect the reviewed state.
 
 ## Canonical next action
 

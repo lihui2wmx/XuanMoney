@@ -2,69 +2,63 @@
 
 ## Current status
 
-Milestone: **Credential Resolver Boundary v0.1 — COMPLETE**
+Milestone: **Environment Credential Resolver v0.1**
 
-Status: **INTEGRATED — post-merge handoff synchronization**
+Status: **READY FOR INTEGRATION — implementation reviewed; final current-head CI required**
 
-Main integration commit: `84edd3e90c9c5c2551e5314410bd7eb554cfe75e`
+Development branch: `feat/environment-credential-resolver-v0.1`
 
-Merged PR: **#12 — `feat: add credential resolver boundary v0.1`**
+Integration PR: **#14 — `feat: add environment credential resolver v0.1`**
+
+Base: `main@0df388a1a4479ca626ff6fa62240268b0331994b`.
 
 The project is licensed under **Apache License 2.0**.
 
-## Integrated credential boundary
-
-The repository now contains an application-owned boundary between serializable credential references and future real provider integration:
+## Implemented environment resolver
 
 ```text
-ProviderConfiguration
+application composition
         |
-        +--> CredentialReference            # serializable, non-secret
+        +--> injected Mapping[str, str]
                   |
                   v
-        CredentialResolver                  # xuanmoney.credentials
+EnvironmentCredentialResolver
+                  |
+                  +--> CredentialReference(environment)
                   |
                   v
-        ProtectedSecret                     # runtime-only, redacted/non-serializable
+ProtectedSecret
                   |
                   v
-        future provider integration
+future trusted provider integration
 ```
 
-Integrated through PR #12:
+Implemented and reviewed:
 
-- `CredentialResolver.resolve(CredentialReference) -> ProtectedSecret` protocol;
-- immutable `ProtectedSecret` rejecting empty values;
-- redacted `str`, `repr`, and formatted output;
-- JSON and pickle serialization fail closed;
-- explicit `reveal()` reserved for a future trusted provider integration boundary;
-- stable sanitized credential-resolution failure codes/messages;
-- missing-reference fake resolution avoids retaining a secret-bearing cause/context chain;
-- deterministic fake/in-memory resolver tests;
-- strict JSON-safe validation for `ModelRequest.context` and `ModelResponse.metadata`;
-- rejection of arbitrary Python objects, including `ProtectedSecret`, from provider transport envelopes;
-- rejection of `NaN`/`Infinity` transport values;
-- invalid transport input values hidden from Pydantic error strings;
-- `Field(default_factory=dict)` used for transport mapping defaults;
-- no reverse `xuanmoney.model -> xuanmoney.credentials` dependency;
-- `docs/CREDENTIALS.md` and updated provider-contract documentation.
+- `EnvironmentCredentialResolver` implements the existing `CredentialResolver` protocol;
+- constructor accepts an injected `Mapping[str, str]`; credential code does not import or read `os.environ`;
+- present non-empty values resolve to `ProtectedSecret`;
+- missing, empty, non-string, and backing-mapping lookup failures normalize to existing `credential_unavailable`;
+- unsupported sources normalize to existing `unsupported_source`;
+- lookup failures are normalized after the backing exception handler so sanitized failures retain no cause/context diagnostics;
+- resolver `repr` does not expose backing mapping data or credential values;
+- deterministic tests use injected mappings and `MappingProxyType`, not host environment contents;
+- existing `ProtectedSecret` redaction/non-serialization behavior is reused unchanged.
 
-## Preserved architecture
+## Preserved boundaries
 
-Package direction:
+Package direction remains:
 
 ```text
 xuanmoney.credentials -> xuanmoney.model
 xuanmoney.runtime     -> xuanmoney.model
-```
-
-Prohibited reverse dependency:
-
-```text
 xuanmoney.model -X-> xuanmoney.credentials
 ```
 
-Existing runtime/provider path remains:
+`ModelRequest.context` and `ModelResponse.metadata` remain strict JSON-safe envelopes,
+so `ProtectedSecret` cannot enter provider transport payloads.
+
+Existing runtime/provider path remains unchanged:
 
 ```text
 BoundedModelRuntime
@@ -82,52 +76,45 @@ single plan -> at most one registered tool -> single synthesis -> terminal
 
 Provider configuration remains `max_attempts = 1`.
 
+## Explicitly out of scope
+
+- OpenAI/Anthropic/Gemini or other provider SDKs;
+- external provider network calls;
+- retry/backoff or provider fallback;
+- streaming or provider-specific function calling;
+- secret-manager integration or API-key persistence;
+- model/runtime/tool/finance direct environment access;
+- new model-callable tools;
+- SQL/Python/shell/filesystem expansion;
+- financial write actions.
+
 ## Verification
 
-Final PR #12 head:
+Canonical command:
 
-```text
-3640269d2e47551c77bce97e9b8fbccfd4714d54
+```bash
+python -m pip install -e ".[dev]"
+pytest
 ```
 
-Verification:
+Verified implementation head before this documentation sync:
 
-- pre-hardening anchor `0ebfee86048a09f1af5d9ab490624c87dd491eba`: PR CI #237 success;
-- final transport-hardened head: PR CI #248 success;
-- GitHub-hosted `ubuntu-latest` runner;
-- Python 3.12;
-- branch was ahead of and not behind `main` at final review;
-- no unresolved review threads;
-- final integration review ID `5096676763` found no remaining architecture or safety blocker;
-- squash merge commit: `84edd3e90c9c5c2551e5314410bd7eb554cfe75e`.
+```text
+fd26abe156678faac91e01f2efdeabbe43ee0222
+```
 
-## Current limitations
+- PR CI #267: **success**;
+- GitHub-hosted `ubuntu-latest` / Python 3.12;
+- PR #14 non-draft and mergeable at review;
+- branch `behind_by=0`;
+- changed-file audit: 7 files, with production changes limited to `xuanmoney.credentials`;
+- no review submissions or unresolved review threads at review time;
+- no runtime, finance, tool, dependency, CI, SDK, network, retry/fallback, or financial-write expansion.
 
-There is still no concrete production credential resolver or real provider integration:
-
-- no real `os.environ` read;
-- no secret-manager integration;
-- no API-key persistence;
-- no OpenAI/Anthropic/Gemini or other provider SDK;
-- no external provider network call;
-- no provider retry/backoff or fallback;
-- no streaming or provider-specific function calling;
-- no provider logging/metrics infrastructure;
-- no production API/UI;
-- no new model-callable tool or financial write capability.
+This handoff synchronization advances the branch beyond the verified implementation head, so latest current-head CI must also pass before merge.
 
 ## Recommended next bounded action
 
-**Start `Environment Credential Resolver v0.1` on a fresh feature branch.**
+**If latest current-head PR #14 CI is green, record final integration review and squash-merge PR #14.**
 
-The bounded increment should:
-
-1. implement a concrete application-owned resolver for existing `CredentialSource.ENVIRONMENT` references;
-2. accept an injected/read-only mapping so tests never depend on the process environment;
-3. optionally provide a narrow application-owned composition helper for `os.environ` only if it does not broaden model/runtime access to environment variables;
-4. return only `ProtectedSecret` and never expose raw values through configuration, model transport, runtime results, errors, evidence, or logs;
-5. convert missing/unsupported references into the existing sanitized credential-resolution failures without retaining secret-bearing exception chains;
-6. use deterministic tests for present, missing, empty, and unsupported values;
-7. preserve strict JSON-safe model transport, `max_attempts = 1`, package direction, and the bounded runtime invariant.
-
-Do **not** combine Environment Credential Resolver v0.1 with a real provider SDK, external provider network calls, retry/backoff, fallback, streaming, new analysis tools, or financial write behavior.
+After integration, refresh canonical handoff on a documentation-only branch before selecting the next provider-integration boundary.

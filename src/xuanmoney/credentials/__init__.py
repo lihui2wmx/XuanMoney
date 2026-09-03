@@ -6,10 +6,12 @@ from .contracts import (
     CredentialResolver,
     ProtectedSecret,
 )
+from .environment import EnvironmentCredentialResolver
 
 __all__ = [
     "CredentialResolutionError",
     "CredentialResolutionFailureCode",
     "CredentialResolver",
+    "EnvironmentCredentialResolver",
     "ProtectedSecret",
 ]

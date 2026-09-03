@@ -176,6 +176,24 @@ Pre-hardening head `0ebfee86048a09f1af5d9ab490624c87dd491eba` passed PR CI #237.
 
 No real environment-variable read, secret manager, provider SDK, network call, retry/backoff, fallback, streaming, logging infrastructure, new model-callable tool, execution-surface expansion, or financial write path was introduced.
 
-### Next boundary
+## 2026-09-03 — Environment Credential Resolver v0.1
 
-Start **Environment Credential Resolver v0.1** as a separate bounded increment. Implement a concrete application-owned resolver for the existing environment reference type using deterministic injected mappings first; keep raw values inside `ProtectedSecret`, preserve sanitized missing-reference behavior and strict model transport, and do not combine this work with any real provider SDK or network call.
+Status: **ACTIVE — implementation and deterministic tests added; PR CI pending**
+
+Branch: `feat/environment-credential-resolver-v0.1`
+
+Base: `main@0df388a1a4479ca626ff6fa62240268b0331994b`.
+
+Implemented:
+
+- concrete application-owned `EnvironmentCredentialResolver` implementing the existing `CredentialResolver` protocol;
+- injected `Mapping[str, str]` input rather than implicit process-environment access;
+- present non-empty environment references return `ProtectedSecret` only;
+- missing and empty values normalize to the existing `credential_unavailable` failure;
+- unsupported sources normalize to `unsupported_source`;
+- backing-mapping lookup exceptions are normalized after leaving the underlying exception handler so public failures retain no diagnostic cause/context chain;
+- resolver representation is redacted and does not expose the backing mapping or values;
+- deterministic tests use injected mappings/`MappingProxyType` and cover present, missing, empty, unsupported, and failing-mapping cases;
+- existing `ProtectedSecret`, JSON-safe model transport, package direction, `max_attempts = 1`, runtime execution sequence, finance logic, and tool registry remain unchanged.
+
+No provider SDK, provider network call, retry/backoff, fallback, streaming, secret manager, API-key persistence, model/runtime direct environment access, new model-callable tool, or financial write path is introduced.

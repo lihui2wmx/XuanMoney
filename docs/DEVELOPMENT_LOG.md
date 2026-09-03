@@ -131,3 +131,25 @@ No real provider SDK, credential handling, external model network call, hidden r
 ### Next boundary
 
 Before adding a real provider SDK, define **Provider Configuration & Safety Contract v0.1**: provider-neutral non-secret configuration, credential references rather than secret values, bounded timeout/no-retry behavior, safe provider failure taxonomy/redaction, and deterministic tests.
+
+## 2026-09-03 — Provider Configuration & Safety Contract v0.1
+
+Status: **ACTIVE — implementation complete; current-head CI and integration review pending**
+
+Branch: `feat/provider-configuration-safety-v0.1`
+
+Implemented:
+
+- provider-neutral `ProviderConfiguration` with non-blank provider/model identifiers;
+- bounded integer request timeout of 1–120 seconds;
+- `max_attempts` fixed to exactly `1`, preventing configuration-driven automatic retries;
+- `CredentialReference` carrying only a source and reference identifier, never a credential value;
+- current credential source limited to an environment-variable reference without reading the environment;
+- `extra="forbid"` rejection of unknown and attempted secret/API-key fields;
+- stable provider transport failure taxonomy covering configuration, credential availability, authentication, timeout, rate limit, service availability, invalid response, and generic transport failures;
+- public `ProviderFailure.message` derived only from its stable code so provider adapters cannot inject raw diagnostic text;
+- `ProviderTransportError` exposing only the sanitized failure contract;
+- deterministic tests for valid/invalid configuration, timeout/retry bounds, secret-field rejection, stable safe messages, and diagnostic/message injection rejection;
+- `docs/PROVIDER_SAFETY.md` defining the pre-SDK trust boundary.
+
+No real provider SDK, credential resolver, network call, retry/backoff, fallback, streaming, logging infrastructure, new model-callable tool, execution-surface expansion, or financial write path is included.

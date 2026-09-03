@@ -59,15 +59,17 @@ This repository is the source of truth for implementation decisions. AI agents m
 
 ## Current milestone
 
-`First Real Provider Adapter v0.1 Readiness/Design`: **ACTIVE**.
+`First Real Provider Adapter v0.1 Readiness/Design`: **COMPLETE — merged via PR #20**.
 
-The selected first provider target is **OpenAI Responses API** through the official Python `openai` SDK. This milestone defines the future adapter/factory contract, SDK retry/timeout policy, credential reveal boundary, request/response translation, stable failure mapping, deterministic fake-client test strategy, and explicit non-goals without installing the SDK or making a provider network call.
+The selected first provider target is **OpenAI Responses API** through the official Python `openai` SDK. The integrated design defines the adapter/factory contract, SDK retry/timeout policy, credential reveal boundary, request/response translation, stable failure mapping, deterministic fake-client test strategy, and explicit non-goals without installing the SDK or making a provider network call.
+
+PR #20 final head `1d09f6c1e94c44d47883868be9c21f8dd781666f` passed GitHub-hosted PR CI #334 and was squash-merged to `main` at `f3c2cf66917a28a580ea16e4a28ae212de3753d9` after integration design review `5102812238` found no blocker.
 
 The governing design is `docs/OPENAI_PROVIDER_ADAPTER.md`.
 
 ## Next recommended milestone
 
-After this readiness/design increment is reviewed and integrated, start **OpenAI Provider Adapter v0.1** on a fresh feature branch. Implement exactly one provider adapter and trusted factory against the existing registry/composer/model contracts, using deterministic fake SDK clients first.
+Start **OpenAI Provider Adapter v0.1** on a fresh feature branch. Implement exactly one provider adapter and trusted factory against the existing registry/composer/model contracts, using deterministic fake SDK clients first.
 
 Do not add a second provider, live-network CI, retry/backoff, fallback, streaming, provider-native tools, new analysis tools, runtime/finance expansion, or financial-write behavior in that milestone.
 

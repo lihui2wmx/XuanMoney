@@ -232,3 +232,34 @@ No vendor SDK, provider network call, provider-specific HTTP/auth implementation
 ### Next boundary
 
 Start **Controlled Provider Factory Registry v0.1** as a separate bounded increment. Add an immutable application-owned allowlist from validated `provider_id` values to trusted `ProviderAdapterFactory` implementations, fail closed on unknown or duplicate identifiers, and prohibit dynamic imports, public registration, plugin discovery, model-controlled provider selection, retry/fallback, vendor SDKs, and network calls in that milestone.
+
+## 2026-09-03 — Controlled Provider Factory Registry v0.1
+
+Status: **ACTIVE — implementation and credential-consuming integration coverage complete; integration review pending**
+
+Branch: `feat/controlled-provider-factory-registry-v0.1`
+
+Integration PR: **#18 — `feat: add controlled provider factory registry v0.1`**
+
+Implemented:
+
+- immutable snapshot-based application-owned `ProviderFactoryRegistry`;
+- explicit fixed `provider_id -> ProviderAdapterFactory` allowlist;
+- whitespace-normalized non-blank provider identifiers aligned with `ProviderConfiguration` semantics;
+- duplicate/ambiguous identifiers fail closed during registry construction;
+- invalid factories without callable `build()` fail closed before credential resolution;
+- unknown configured providers normalize to sanitized `ProviderFailureCode.INVALID_CONFIGURATION` before factory invocation;
+- provider construction delegates through the existing `ProviderAdapterComposer` and credential-resolution boundary;
+- no public `register()`, dynamic import, entry-point/plugin/filesystem discovery, model-controlled provider loading, fallback, or retry-based switching;
+- deterministic registry-level credential-consuming fake factory integration executes through `EnvironmentCredentialResolver`, trusted reveal/construction, `ModelPortProviderBridge`, and `BoundedModelRuntime`;
+- test secret material is asserted absent from registry/factory/provider representations, provider request serialization, and runtime result serialization;
+- `docs/PROVIDER_REGISTRY.md` documents the provider-selection trust boundary.
+
+Verification anchors:
+
+- core implementation/test head `2300791fa062d66203791fc82906973b6a22106c`: PR CI #308 success;
+- handoff synchronization head `df23f502e860d10b07ba89c471b29c474cc4da75`: PR CI #310 success;
+- credential-consuming integration test commit `1a38d0717cfc0468998310cc93d48e5a644cdc1d`;
+- GitHub-hosted `ubuntu-latest` / Python 3.12 remains the authoritative executable validation environment.
+
+No vendor SDK, external provider network call, provider-specific HTTP/auth implementation, retry/backoff, fallback, streaming, secret-manager integration, dynamic provider discovery, new model-callable tool, runtime/finance/tool expansion, or financial write path is introduced.

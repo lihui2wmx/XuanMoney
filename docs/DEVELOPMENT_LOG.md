@@ -267,3 +267,40 @@ No vendor SDK, external provider network call, provider-specific HTTP/auth imple
 ### Next boundary
 
 Perform a bounded **First Real Provider Adapter v0.1 readiness/design review** before implementation. Select exactly one provider target and define its dependency/client surface, timeout application, authentication construction, request/response translation, stable failure mapping, deterministic test strategy, and preserved no-retry/no-fallback/bounded-runtime constraints before adding real network behavior.
+
+## 2026-09-03 — OpenAI Provider Adapter v0.1
+
+Status: **READY FOR INTEGRATION**
+
+Branch: `feat/openai-provider-adapter-v0.1`
+
+Integration PR: **#22 — `feat: add OpenAI provider adapter v0.1`**
+
+Implemented:
+
+- bounded official dependency `openai>=3.7,<4`;
+- application-owned `OpenAIProviderFactory` as the only OpenAI-specific trusted `ProtectedSecret.reveal()` boundary;
+- application-owned synchronous `OpenAIProviderAdapter` implementing the existing `ModelProvider.complete(ModelRequest) -> ModelResponse` contract;
+- SDK client construction applies configured timeout and explicitly sets `max_retries=0`, preserving repository `max_attempts = 1`;
+- existing `ModelRequest(prompt, context)` contract is preserved, with `prompt -> Responses instructions` and deterministic JSON-safe `context -> Responses input`;
+- one `ModelProvider.complete()` maps to at most one synchronous `responses.create()` call;
+- no provider-native tools, streaming, background responses, application retry/backoff, provider/model fallback, or alternate execution path is introduced;
+- nonblank canonical `output_text` maps to `ModelResponse(provider="openai")`; missing/blank text fails closed as `INVALID_RESPONSE`;
+- authentication/permission, timeout, rate limit, service, bad-request/configuration, connection, and unexpected SDK failures normalize to existing stable safe `ProviderFailureCode` values;
+- normalized failures retain no raw provider diagnostic, credential material, exception cause, or exception context;
+- deterministic fake-SDK tests cover factory construction, request mapping, no-tools/no-streaming/no-background behavior, failure normalization, invalid configuration/client surfaces, secret non-disclosure, and registry/composer/bridge/runtime integration;
+- implementation corrected the readiness-document mismatch that described nonexistent `ModelRequest.instructions/input` fields without changing lower-level model/runtime schemas.
+
+Verification:
+
+- implementation/test head `26d317d1398b717d15d468288db3dab866231c6c`: PR CI #346 success on GitHub-hosted `ubuntu-latest` / Python 3.12;
+- documentation-synchronized head `564f8becdb06ffd6ea653e8281d5e8035707ffd8`: PR CI #350 success;
+- branch is `behind_by=0` and PR #22 is mergeable;
+- integration review `5103040205` found no remaining code, architecture, provider-safety, dependency-direction, or bounded-scope blocker;
+- local pytest is not claimed because the execution container cannot resolve `github.com`; GitHub-hosted CI is the executable verification authority for this session.
+
+No live provider network call, live credential CI, second provider, retry/backoff, fallback, streaming, background response mode, provider-native tools/function calling, secret-manager integration, runtime/finance/tool expansion, production API/UI, or financial write path is introduced.
+
+### Next boundary
+
+After current-head CI is green and no review/thread blocker appears, squash-merge PR #22 and perform a documentation-only post-merge synchronization before selecting the next provider/runtime capability.

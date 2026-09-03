@@ -1,88 +1,87 @@
-# OpenAI Provider Adapter v0.1 Readiness Design
+# OpenAI Provider Adapter v0.1
 
 ## Decision
 
 The first real provider target is **OpenAI Responses API** through the official Python `openai` package.
 
-This document is a readiness/design boundary only. It does not install the SDK, construct a live client, read a live credential, or send a network request.
+The readiness/design review was integrated before implementation. This document now governs the implementation boundary and records one contract correction discovered during implementation.
 
-## Why OpenAI first
+## Provider contract correction
 
-The existing provider contract is synchronous and intentionally narrow:
+The readiness draft described a hypothetical `ModelRequest.instructions/input` shape. The actual repository transport contract is:
 
 ```text
-ModelProvider.complete(ModelRequest) -> ModelResponse
+ModelRequest(prompt: str, context: dict[str, object])
 ```
 
-A single synchronous `client.responses.create(...)` request maps cleanly onto that contract without adding streaming, provider-native tool execution, retry loops, or a second runtime state machine.
+and `ModelPortProviderBridge` already relies on that contract. The OpenAI adapter therefore does **not** change `xuanmoney.model` schemas. The approved mapping is:
 
-The initial implementation should use the official `openai` Python package and the Responses API only. No Chat Completions compatibility path should be added in the same milestone.
+```text
+ModelRequest.prompt  -> Responses API instructions
+ModelRequest.context -> deterministic JSON string -> Responses API input
+```
+
+`context` is already required to be strict JSON-safe by `ModelRequest`, so the adapter serializes it deterministically with non-standard JSON numbers disabled upstream. This preserves the existing model/runtime package boundary rather than widening it for one provider.
 
 ## Dependency boundary
 
-Implementation milestone target dependency:
+Implementation dependency:
 
 ```text
 openai>=3.7,<4
 ```
 
-The implementation milestone must add only the official SDK dependency required for the adapter. It must not add a separate HTTP client dependency unless the SDK contract demonstrably requires one for the selected implementation.
+Only application-owned `xuanmoney.providers` code may import `openai`. `xuanmoney.model`, `xuanmoney.runtime`, `xuanmoney.finance`, `xuanmoney.tools`, and `xuanmoney.credentials` remain provider-SDK-free.
 
-The SDK is application/provider-layer infrastructure. `xuanmoney.model`, `xuanmoney.runtime`, `xuanmoney.finance`, and `xuanmoney.tools` must not import `openai`.
+No separate direct HTTP client dependency is introduced by XuanMoney.
 
 ## Provider identifier
 
-The controlled registry identifier for this adapter is:
+The controlled registry identifier is exactly:
 
 ```text
 openai
 ```
 
-Selection remains application-owned through `ProviderConfiguration.provider_id`. Model output and model-callable tool arguments must never select or alter the provider.
+Selection remains application-owned through `ProviderConfiguration.provider_id`. Model output and model-callable tool arguments never select or alter the provider.
 
 ## Trusted construction boundary
 
-A future `OpenAIProviderFactory` belongs under application-owned `xuanmoney.providers`.
+`OpenAIProviderFactory` belongs under application-owned `xuanmoney.providers`.
 
-The factory may receive:
+For `provider_id="openai"`, a credential is required. The factory is the only OpenAI-specific component permitted to call `ProtectedSecret.reveal()`.
 
-- validated `ProviderConfiguration`;
-- `ProtectedSecret | None` from the existing composer.
-
-For `provider_id="openai"`, a credential is required. The factory is the only new component permitted to call `ProtectedSecret.reveal()`.
-
-The raw value may be passed directly into the official SDK client constructor as the API key, but must not be stored separately on the factory or adapter and must never enter repr/str, exceptions, metadata, prompts, evidence, logs, or test snapshots.
+The raw value is passed directly into official SDK client construction and is not persisted separately by the factory or adapter.
 
 Client construction policy:
 
 ```text
 OpenAI(
     api_key=<revealed credential>,
-    timeout=configuration.request_timeout_seconds,
+    timeout=float(configuration.request_timeout_seconds),
     max_retries=0,
 )
 ```
 
-`max_retries=0` is mandatory because repository policy fixes provider attempts to one. SDK defaults must not silently widen that invariant.
+`max_retries=0` is mandatory because the official SDK otherwise retries selected failures automatically. Repository policy fixes provider attempts to one.
 
 ## Request mapping
 
-`ProviderConfiguration.model_id` maps directly to the Responses API `model` parameter.
+Each `ModelProvider.complete(ModelRequest)` maps to at most one synchronous `client.responses.create(...)` call.
 
-Each `ModelRequest` maps to exactly one Responses API call.
-
-Initial mapping:
+Current mapping:
 
 ```text
-ModelRequest.instructions -> Responses API instructions
-ModelRequest.input        -> Responses API input
 ProviderConfiguration.model_id -> model
-ProviderConfiguration.request_timeout_seconds -> request/client timeout
+ModelRequest.prompt             -> instructions
+JSON(ModelRequest.context)      -> input
 ```
 
-No provider-native tools are supplied. No web search, file search, computer use, shell, code interpreter, function calling, MCP, or other built-in/custom tool surface is enabled by this adapter milestone.
+The context serialization is deterministic (`sort_keys=True`, compact separators) and remains a transport operation only. The adapter does not reinterpret planning, synthesis, evidence, finance semantics, or response schemas carried inside context.
 
-The adapter must not reinterpret finance semantics or runtime planning/synthesis contracts. It transports the already-prepared request only.
+No provider-native tools are supplied. No web search, file search, computer use, shell, code interpreter, function calling, MCP, or other built-in/custom tool surface is enabled.
+
+No streaming or background response mode is enabled.
 
 ## Response mapping
 
@@ -90,13 +89,11 @@ The adapter returns one `ModelResponse`.
 
 For v0.1:
 
-- response text is extracted from the SDK response's canonical text output surface;
-- blank/missing/unusable text fails closed as `ProviderFailureCode.INVALID_RESPONSE`;
+- response text is read from the SDK response's canonical `output_text` surface;
+- blank, missing, or unusable text fails closed as `ProviderFailureCode.INVALID_RESPONSE`;
 - `ModelResponse.provider` is the stable string `openai`;
-- `ModelResponse.metadata` remains minimal and JSON-safe;
-- provider request IDs or other non-secret stable identifiers may be considered later, but are not required for v0.1.
-
-Raw SDK response objects must not be embedded in `ModelResponse.metadata`.
+- `ModelResponse.metadata` remains empty/minimal and JSON-safe;
+- raw SDK response objects are never embedded in metadata.
 
 ## Failure normalization
 
@@ -105,94 +102,96 @@ Provider-specific exceptions are translated into the existing stable taxonomy wi
 Required mapping:
 
 ```text
-OpenAI authentication/permission credential failures -> AUTHENTICATION_FAILED
-OpenAI timeout exception                           -> TIMEOUT
-OpenAI rate-limit exception                        -> RATE_LIMITED
-OpenAI >=500/service-unavailable class             -> SERVICE_UNAVAILABLE
-OpenAI connection/transport exception              -> TRANSPORT_ERROR
-missing/unusable response text                     -> INVALID_RESPONSE
-unexpected SDK/client exception                    -> TRANSPORT_ERROR
+AuthenticationError / PermissionDeniedError -> AUTHENTICATION_FAILED
+APITimeoutError                             -> TIMEOUT
+RateLimitError                              -> RATE_LIMITED
+InternalServerError / >=500                 -> SERVICE_UNAVAILABLE
+BadRequestError / NotFoundError / 422       -> INVALID_CONFIGURATION
+APIConnectionError                          -> TRANSPORT_ERROR
+missing/unusable output_text                -> INVALID_RESPONSE
+unexpected SDK/client exception             -> TRANSPORT_ERROR
 ```
 
-Bad-request/model-configuration errors that arise from application-owned provider/model configuration should fail closed as `INVALID_CONFIGURATION` where the SDK exposes a reliably classifiable configuration/request error. The implementation must not leak the provider's diagnostic text to decide or explain the public failure.
+Generic `APIStatusError` values may also be normalized by stable HTTP status class when the dedicated SDK subclass is not observed. Raw provider diagnostics are never used as public failure messages.
 
 All public failures remain `ProviderTransportError` with code-derived safe messages only.
 
 ## Runtime invariants
 
-The implementation must preserve:
+The implementation preserves:
 
 ```text
 single plan -> at most one registered tool -> single synthesis -> terminal
 max_attempts = 1
 one ModelProvider.complete() call per reached runtime phase
+one Responses API call per complete() invocation
 ```
 
-The adapter must not add:
+The adapter does not add:
 
 - SDK automatic retries;
 - application retry/backoff;
-- provider fallback;
-- alternate model fallback;
+- provider or model fallback;
 - streaming;
+- background responses;
 - provider-native autonomous tool loops;
 - provider-native function/tool invocation;
 - hidden filesystem/SQL/Python/shell access.
 
 ## Deterministic test strategy
 
-No live API key or network request is required for the implementation milestone's acceptance tests.
+Normal CI uses no live API key and sends no network request.
 
-Tests should inject or monkeypatch a deterministic fake SDK client/factory boundary and prove:
+`tests/test_openai_provider_adapter.py` uses a deterministic fake SDK client boundary and proves:
 
-1. registry selects only `provider_id="openai"` for the OpenAI factory;
-2. trusted factory reveals the `ProtectedSecret` only for client construction;
-3. client construction receives `max_retries=0` and the configured timeout;
-4. `model_id`, instructions, and input map exactly once into one Responses API request;
-5. successful SDK text maps to `ModelResponse`;
-6. authentication, timeout, rate-limit, service, invalid-response, and generic transport failures normalize to stable codes;
-7. raw provider diagnostics and credential material are absent from public errors and object representations;
-8. the adapter executes through `ModelPortProviderBridge` and `BoundedModelRuntime` using deterministic fake SDK responses;
-9. no retry or second provider call occurs after a provider failure;
-10. no provider-native tool surface is sent to the SDK.
+1. trusted factory reveals `ProtectedSecret` only for client construction;
+2. client construction receives configured timeout and `max_retries=0`;
+3. `prompt`, JSON-safe `context`, and model ID map exactly once into one Responses API request;
+4. no `tools`, `stream`, or `background` argument is sent;
+5. successful `output_text` maps to `ModelResponse(provider="openai")`;
+6. blank output fails closed as `INVALID_RESPONSE`;
+7. authentication, permission, timeout, rate-limit, service, bad-request/model, not-found, unprocessable, connection, and unexpected failures normalize to stable codes;
+8. public failures retain no raw diagnostic or credential material and no cause/context chain;
+9. wrong provider IDs, missing credentials, and invalid SDK client surfaces fail closed;
+10. controlled registry + injected environment resolver + trusted factory + adapter + `ModelPortProviderBridge` + `BoundedModelRuntime` execute end to end with deterministic responses and no secret disclosure.
 
-A later optional live smoke test may be designed separately and must not be part of normal CI or require repository secrets by default.
+A later optional live smoke test must be a separate milestone and must not become normal CI or require repository secrets by default.
 
-## Implementation shape
-
-Recommended bounded implementation files:
+## Implementation files
 
 ```text
 src/xuanmoney/providers/openai_adapter.py
 src/xuanmoney/providers/__init__.py
 pyproject.toml
 tests/test_openai_provider_adapter.py
+docs/OPENAI_PROVIDER_ADAPTER.md
 docs/HANDOFF.md
 docs/DEVELOPMENT_LOG.md
 ```
 
-Do not modify finance kernels, controlled analysis tools, runtime state transitions, model transport schemas, credential resolver semantics, or registry mutation policy unless a concrete incompatibility is found and reviewed first.
+Finance kernels, controlled analysis tools, runtime state transitions, model transport schemas, credential resolver semantics, and registry mutation policy remain unchanged.
 
 ## Exit conditions for OpenAI Provider Adapter v0.1
 
-The implementation milestone is complete only when:
+The milestone is complete only when:
 
 - official `openai` SDK dependency is bounded;
-- one trusted `OpenAIProviderFactory` and one provider adapter implement the existing contracts;
+- one trusted `OpenAIProviderFactory` and one provider adapter implement existing contracts;
 - SDK retries are explicitly disabled;
 - configured timeout and model ID are applied;
 - credential reveal remains confined to trusted client construction;
 - one `ModelRequest` produces at most one SDK request;
-- successful text response produces a valid `ModelResponse`;
+- existing `prompt/context` transport contract is preserved;
+- successful canonical text produces a valid `ModelResponse`;
 - stable failure mappings are covered deterministically;
 - no raw provider diagnostics/secrets leak through public failures, transport, runtime results, or repr;
-- deterministic bridge/runtime integration passes;
-- no provider-native tools, streaming, fallback, retry/backoff, new analysis tools, or financial writes are introduced;
+- deterministic registry/bridge/runtime integration passes;
+- no provider-native tools, streaming, background mode, fallback, retry/backoff, new analysis tools, or financial writes are introduced;
 - GitHub-hosted CI passes and integration review finds no blocker.
 
 ## Explicit non-goals
 
-- Anthropic, Gemini, Azure OpenAI, Bedrock, or other second provider;
+- Anthropic, Gemini, Azure OpenAI, Bedrock, or another provider;
 - live-network CI;
 - streaming;
 - Responses API built-in tools;

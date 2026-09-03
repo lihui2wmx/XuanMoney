@@ -12,8 +12,9 @@ This repository is the source of truth for implementation decisions. AI agents m
 6. `docs/RUNTIME.md`
 7. `docs/PROVIDER_CONTRACT.md`
 8. `docs/PROVIDER_SAFETY.md`
-9. the relevant section of `docs/DEVELOPMENT_LOG.md`
-10. implementation and tests touched by the active bounded increment
+9. `docs/CREDENTIALS.md`
+10. the relevant section of `docs/DEVELOPMENT_LOG.md`
+11. implementation and tests touched by the active bounded increment
 
 ## Working model
 
@@ -45,20 +46,27 @@ This repository is the source of truth for implementation decisions. AI agents m
 26. Provider request timeout must be bounded and automatic provider retries remain disabled (`max_attempts = 1`) unless a future milestone explicitly changes and validates the runtime policy.
 27. Public provider failure objects must contain only stable failure codes and code-derived safe messages; raw provider diagnostics, exception text, HTTP bodies, request payloads, and credential material must not enter serialized failures.
 28. Credential resolution must remain outside model-callable surfaces. Any resolved secret wrapper must redact representation/serialization and must not be stored in `ProviderConfiguration`, `ModelRequest`, runtime results, evidence, or logs.
+29. `xuanmoney.credentials` is an application-owned credential boundary. It may depend on model-layer credential references; `xuanmoney.model`, runtime, tools, and finance code must not depend on resolved secret values.
+30. Revealing a protected credential is an explicit trusted-boundary operation. Do not reveal a secret for diagnostics, validation messages, logging, evidence, prompt/model context, or test snapshots.
 
 ## Current milestone
 
-`Provider Configuration & Safety Contract v0.1`: **COMPLETE — merged via PR #10**.
+`Credential Resolver Boundary v0.1`: **ACTIVE**.
 
-Completed properties include immutable non-secret provider configuration, environment credential references, bounded 1–120 second timeout, `max_attempts = 1`, immutable code-derived sanitized provider failures, and deterministic safety tests. PR #10 was squash-merged to `main` at `0148962739a80cdb53c25dbbf445dc9584a75a4a` after final PR CI #218 passed.
+The milestone defines an application-owned `CredentialResolver` protocol over the existing non-secret `CredentialReference`, a runtime-only `ProtectedSecret`, and sanitized credential-resolution failures. Deterministic fake/in-memory tests must prove that normal string/representation and serialization paths do not expose resolved values.
 
-No provider SDK, secret resolver, external network call, retry/backoff, fallback, streaming, new model-callable tool, or financial-write path was introduced.
+## Exit conditions for the current milestone
 
-## Next recommended milestone
-
-`Credential Resolver Boundary v0.1`: define an application-owned resolver interface that converts a `CredentialReference` into a protected secret value without making the secret serializable, model-callable, loggable, or part of provider configuration.
-
-Use deterministic/fake resolver tests first. Do not combine this boundary with OpenAI/Anthropic/Gemini SDK installation or external provider network calls.
+- `CredentialResolver.resolve(CredentialReference) -> ProtectedSecret` exists as an application-owned protocol;
+- `ProtectedSecret` rejects empty values, is immutable, and redacts `str`, `repr`, and formatted output;
+- common JSON and pickle serialization paths fail rather than expose the secret value;
+- resolved values remain absent from `ProviderConfiguration`, `ModelRequest`, runtime results, evidence, and model-callable payloads;
+- credential-resolution failures expose stable safe codes/messages without storing or echoing reference identifiers, secret values, or raw diagnostics;
+- deterministic fake/in-memory resolver tests cover successful resolution and missing-reference behavior;
+- package direction remains `xuanmoney.credentials -> xuanmoney.model` for reference types, never the reverse;
+- no real environment read, secret manager, provider SDK, network call, retry/backoff, fallback, new tool, or financial-write path is introduced;
+- CI passes on the official GitHub-hosted runner;
+- `docs/CREDENTIALS.md`, development log, and canonical handoff reflect the reviewed state.
 
 ## Canonical next action
 

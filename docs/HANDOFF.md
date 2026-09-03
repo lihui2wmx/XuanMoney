@@ -4,7 +4,7 @@
 
 Milestone: **Provider Adapter Credential Injection v0.1**
 
-Status: **ACTIVE — implementation and deterministic runtime-path tests added; documentation sync in progress**
+Status: **READY FOR INTEGRATION — implementation reviewed; final current-head CI required**
 
 Development branch: `feat/provider-adapter-credential-injection-v0.1`
 
@@ -40,7 +40,7 @@ ProviderConfiguration              CredentialResolver
               BoundedModelRuntime
 ```
 
-Implemented:
+Implemented and reviewed:
 
 - new application-owned `xuanmoney.providers` package;
 - `ProviderAdapterFactory` protocol for trusted provider/client construction;
@@ -52,6 +52,7 @@ Implemented:
 - unsupported credential sources map to sanitized `ProviderFailureCode.INVALID_CONFIGURATION`;
 - unexpected resolver failures and invalid resolver return types fail closed before factory invocation;
 - adapter/factory construction failures normalize to sanitized `ProviderFailureCode.TRANSPORT_ERROR`;
+- a factory result without a callable `complete()` surface is rejected immediately as `TRANSPORT_ERROR` rather than leaking into runtime;
 - sanitized failures are raised outside source exception handlers so secret-bearing resolver/factory diagnostics are not retained as cause/context chains;
 - deterministic fake factory/adapter tests exercise a complete `ModelPortProviderBridge -> BoundedModelRuntime` flow;
 - test secret material is absent from provider request serialization, runtime result serialization, public failures, composer/factory/adapter representations, and model-callable payloads;
@@ -109,21 +110,27 @@ python -m pip install -e ".[dev]"
 pytest
 ```
 
-Implementation/docs anchor before canonical-state synchronization:
+Verified implementation head before this final handoff sync:
 
 ```text
-707523b7744d9fbba47f70fb8e3365c4a331bcb8
+8b357c947c80eb44adaf2d091f27f3d35aa717fd
 ```
 
-- PR #16 CI #284: **success** on GitHub-hosted `ubuntu-latest` / Python 3.12;
-- branch was `behind_by=0` at first integration review;
-- changed-file audit before canonical docs sync: production changes limited to new `xuanmoney.providers` package;
+Verification:
+
+- initial implementation/docs anchor `707523b7744d9fbba47f70fb8e3365c4a331bcb8`: PR CI #284 success;
+- fail-closed provider-result hardening head `8b357c947c80eb44adaf2d091f27f3d35aa717fd`: PR CI #294 success;
+- GitHub-hosted `ubuntu-latest` / Python 3.12;
+- PR #16 non-draft and mergeable at review;
+- branch `behind_by=0`;
+- changed-file audit: 7 files, with production changes limited to new `xuanmoney.providers` package;
+- no review submissions or unresolved review threads at review time;
 - no runtime, finance, tool, dependency, SDK, network, retry/fallback, or financial-write expansion.
 
-The AGENTS/HANDOFF/development-log synchronization advances the branch beyond the verified anchor, so latest current-head CI must pass before final integration review and merge.
+This handoff synchronization advances the branch beyond the verified implementation head, so latest current-head CI must also pass before merge.
 
 ## Recommended next bounded action
 
-**Synchronize `docs/DEVELOPMENT_LOG.md`, then run current-head PR #16 CI and perform final integration review.**
+**If latest current-head PR #16 CI is green, record final integration review and squash-merge PR #16.**
 
-If green, re-check changed-file scope, package direction, PR threads, reveal confinement, secret non-disclosure, failure sanitization, and branch freshness. Only then mark PR #16 ready for integration.
+After integration, refresh canonical handoff on a documentation-only branch before selecting the next vendor-provider boundary.

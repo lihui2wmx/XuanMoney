@@ -6,7 +6,11 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 
-_STRICT_MODEL = ConfigDict(extra="forbid", str_strip_whitespace=True)
+_STRICT_MODEL = ConfigDict(
+    extra="forbid",
+    str_strip_whitespace=True,
+    frozen=True,
+)
 
 
 class CredentialSource(StrEnum):
@@ -21,7 +25,10 @@ class CredentialReference(BaseModel):
     model_config = _STRICT_MODEL
 
     source: CredentialSource
-    identifier: str = Field(min_length=1)
+    identifier: str = Field(
+        min_length=1,
+        pattern=r"^[A-Za-z_][A-Za-z0-9_]*$",
+    )
 
 
 class ProviderConfiguration(BaseModel):
@@ -29,6 +36,8 @@ class ProviderConfiguration(BaseModel):
 
     Secret values are deliberately absent. Adapters may receive a
     CredentialReference and resolve it outside this contract in a later milestone.
+    The model is immutable so validated timeout/retry policy cannot be widened after
+    construction.
     """
 
     model_config = _STRICT_MODEL

@@ -196,6 +196,33 @@ Implementation head `fd26abe156678faac91e01f2efdeabbe43ee0222` passed PR CI #267
 
 No provider SDK, provider network call, retry/backoff, fallback, streaming, secret manager, API-key persistence, model/runtime direct environment access, new model-callable tool, or financial write path was introduced.
 
-### Next boundary
+## 2026-09-03 — Provider Adapter Credential Injection v0.1
 
-Start **Provider Adapter Credential Injection v0.1** as a separate bounded increment. Define the trusted application-owned composition path from existing `ProviderConfiguration` and `CredentialResolver` into a deterministic fake provider adapter/client, confine explicit secret reveal to that boundary, and prove secrets never enter provider transport envelopes, runtime results, evidence, errors, reprs, or model-callable payloads. Keep real vendor SDKs and external network calls out of the milestone.
+Status: **ACTIVE — implementation, runtime-path tests, and composition documentation added; current-head CI pending after canonical docs sync**
+
+Branch: `feat/provider-adapter-credential-injection-v0.1`
+
+Integration PR: **#16 — `feat: add provider adapter credential injection v0.1`**
+
+Base: `main@3dc2e5883556048d378b23228d85598a3d620736`.
+
+Implemented:
+
+- new application-owned `xuanmoney.providers` package;
+- `ProviderAdapterFactory` protocol as the trusted provider/client-construction boundary;
+- `ProviderAdapterComposer` accepting existing `ProviderConfiguration`, `CredentialResolver`, and factory contracts;
+- optional credential references resolve once to `ProtectedSecret` before adapter construction;
+- generic composer deliberately never calls `ProtectedSecret.reveal()`;
+- deterministic fake factory is the only component that explicitly reveals the test credential for client construction and stores no raw secret;
+- unavailable credentials normalize to `ProviderFailureCode.CREDENTIAL_UNAVAILABLE` before factory invocation;
+- unsupported credential sources normalize to `ProviderFailureCode.INVALID_CONFIGURATION`;
+- unexpected resolver failures and invalid resolver return types fail closed;
+- factory/client-construction failures normalize to `ProviderFailureCode.TRANSPORT_ERROR` without retaining raw secret-bearing cause/context chains;
+- deterministic integration test drives the composed fake provider through `ModelPortProviderBridge` and `BoundedModelRuntime`;
+- tests assert the fake secret is absent from model transport request serialization, runtime result serialization, public failures, and composer/factory/adapter representations;
+- package direction is `xuanmoney.providers -> xuanmoney.credentials -> xuanmoney.model` plus `xuanmoney.providers -> xuanmoney.model`, with no reverse dependency;
+- `docs/PROVIDER_COMPOSITION.md` defines the trusted reveal and failure-normalization boundary.
+
+Implementation/docs anchor `707523b7744d9fbba47f70fb8e3365c4a331bcb8` passed GitHub-hosted PR CI #284 on `ubuntu-latest` / Python 3.12. Canonical AGENTS/HANDOFF/development-log synchronization advances the branch beyond that anchor, so current-head CI must pass before final integration review.
+
+No vendor SDK, provider network call, provider-specific HTTP/auth implementation, retry/backoff, fallback, streaming, secret manager, credential persistence, new model-callable tool, runtime/finance/tool expansion, or financial write path is introduced.

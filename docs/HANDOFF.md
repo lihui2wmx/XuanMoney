@@ -2,27 +2,21 @@
 
 ## Current status
 
-Milestone: **OpenAI Provider Adapter v0.1**
+Milestone: **OpenAI Provider Adapter v0.1 — COMPLETE**
 
-Status: **READY FOR INTEGRATION — implementation, deterministic CI, governance log, and integration review complete**
+Status: **INTEGRATED — post-merge handoff synchronization**
 
-Development branch: `feat/openai-provider-adapter-v0.1`
+Main integration commit: `40ddbf723fda8dad0ba8044286bd2a5c2ed3d072`
 
-Integration PR: **#22 — `feat: add OpenAI provider adapter v0.1`**
+Merged PR: **#22 — `feat: add OpenAI provider adapter v0.1`**
 
-Base: `main@17de31993172966fa448b0d142ca37a4b6d328ac`.
+Final PR head: `318a10e565696cb492bce6d02d4a1c5843fb2bfe`
 
-Current pre-merge head before this handoff synchronization:
-
-```text
-c21232783ee59bf932a545ca5507823ee234a0ff
-```
-
-The preceding readiness/design milestone was integrated through PR #20 and post-merge synchronization PR #21.
+Final PR CI #354 passed on GitHub-hosted `ubuntu-latest` / Python 3.12. Integration review `5103040205` found no remaining code, architecture, provider-safety, dependency-direction, governance, or bounded-scope blocker.
 
 The project is licensed under **Apache License 2.0**.
 
-## Implemented provider boundary
+## Integrated provider boundary
 
 ```text
 ProviderConfiguration(provider_id="openai")
@@ -46,7 +40,7 @@ OpenAIProviderAdapter
 ModelProvider.complete(ModelRequest)
         |
         +--> prompt -> Responses instructions
-        +--> JSON(context) -> Responses input
+        +--> deterministic JSON(context) -> Responses input
         |
         v
 one synchronous responses.create()
@@ -61,35 +55,30 @@ ModelPortProviderBridge
 BoundedModelRuntime
 ```
 
-Implemented in PR #22:
+Integrated through PR #22:
 
 - bounded official dependency `openai>=3.7,<4`;
-- SDK import confined to application-owned `xuanmoney.providers`;
-- one trusted `OpenAIProviderFactory` requiring `provider_id="openai"` and a resolved credential;
-- `ProtectedSecret.reveal()` occurs only in trusted SDK client construction;
-- SDK client construction applies `request_timeout_seconds` and explicitly sets `max_retries=0`;
-- one `OpenAIProviderAdapter.complete()` maps to at most one synchronous `client.responses.create()`;
-- existing transport contract is preserved: `ModelRequest.prompt -> instructions` and deterministic JSON-safe `ModelRequest.context -> input`;
-- the readiness-document mismatch describing nonexistent `ModelRequest.instructions/input` fields is corrected without widening `xuanmoney.model`;
-- no provider-native `tools`, `stream`, or `background` argument is sent;
-- successful nonblank `output_text` maps to `ModelResponse(content=..., provider="openai")` with empty metadata;
-- missing/blank output fails closed as `INVALID_RESPONSE`;
-- authentication/permission, timeout, rate-limit, service, bad-request/configuration, connection, and unexpected exceptions normalize to the existing safe `ProviderFailureCode` taxonomy;
-- normalized failures retain no raw diagnostics, credential material, exception cause, or exception context;
-- invalid provider IDs, missing credentials, and invalid SDK client surfaces fail closed;
-- deterministic fake-SDK integration executes through registry, injected environment resolver, trusted factory, adapter, `ModelPortProviderBridge`, and `BoundedModelRuntime`.
+- OpenAI SDK imports remain confined to application-owned `xuanmoney.providers`;
+- `OpenAIProviderFactory` is the only OpenAI-specific trusted credential reveal/client-construction boundary;
+- SDK client construction applies configured timeout and explicitly sets `max_retries=0`;
+- the existing `ModelRequest(prompt, context)` transport contract remains unchanged;
+- one `OpenAIProviderAdapter.complete()` issues at most one synchronous Responses API request;
+- no provider-native tools, streaming, background execution, retry/backoff, provider/model fallback, or alternate execution path is enabled;
+- canonical nonblank `output_text` maps to `ModelResponse(provider="openai")`;
+- authentication/permission, timeout, rate-limit, service, configuration, connection, invalid-response, and unexpected SDK failures normalize to existing stable safe failure codes;
+- normalized public failures retain no raw provider diagnostics, credential material, cause chain, or context chain;
+- deterministic tests cover factory construction, request mapping, failure normalization, secret non-disclosure, controlled registry/composer integration, and execution through `ModelPortProviderBridge` and `BoundedModelRuntime`;
+- no live credential or external OpenAI request is used in normal CI.
 
 ## Verification
 
 - implementation/test head `26d317d1398b717d15d468288db3dab866231c6c`: PR CI #346 success;
 - documentation-synchronized head `564f8becdb06ffd6ea653e8281d5e8035707ffd8`: PR CI #350 success;
 - development-log synchronized head `c21232783ee59bf932a545ca5507823ee234a0ff`: PR CI #352 success;
-- branch was `behind_by=0` and PR #22 mergeable at the latest integration check;
-- no review threads are present;
-- integration review `5103040205` found no remaining code, architecture, provider-safety, dependency-direction, or bounded-scope blocker after the required development-log synchronization;
-- the execution container cannot resolve `github.com`, so no local pytest result is claimed; GitHub-hosted CI is the executable verification authority for this session.
-
-This handoff update advances the branch beyond `c2123278…`; current-head GitHub-hosted CI must pass once more before merge.
+- final handoff head `318a10e565696cb492bce6d02d4a1c5843fb2bfe`: PR CI #354 success;
+- final branch was `behind_by=0`, PR #22 was mergeable, and no review threads remained;
+- integration review `5103040205`: no blocker;
+- squash merge commit: `40ddbf723fda8dad0ba8044286bd2a5c2ed3d072`.
 
 ## Preserved invariants
 
@@ -100,17 +89,15 @@ one ModelProvider.complete() call per reached runtime phase
 one Responses API call per complete() invocation
 ```
 
-Package direction remains provider-specific only at the application provider layer. `xuanmoney.model`, runtime, finance, tools, and credentials do not import the OpenAI SDK.
-
-The adapter adds no hidden retry, fallback, alternate model, provider-native tool loop, filesystem/SQL/Python/shell path, or financial write behavior.
+The project remains read-only. Provider integration does not authorize new tool surfaces, filesystem/SQL/Python/shell access, provider-native tool execution, or financial writes.
 
 ## Current limitations
 
-- no live OpenAI network call has been executed;
+- no application-owned bootstrap/factory yet assembles provider configuration, credential resolver, fixed provider registry, provider bridge, controlled analysis registry, and bounded runtime into one reusable runtime construction boundary;
+- no live OpenAI network smoke test has been executed;
 - no live credential is used in normal tests or CI;
 - no second provider exists;
-- no streaming or background Responses API mode;
-- no provider-native tools/function calling;
+- no streaming/background Responses API mode or provider-native tool calling;
 - no retry/backoff or provider/model fallback;
 - no secret-manager integration;
 - no production API/UI;
@@ -118,6 +105,16 @@ The adapter adds no hidden retry, fallback, alternate model, provider-native too
 
 ## Recommended next bounded action
 
-**Verify current-head PR CI, then squash-merge PR #22 if the head is unchanged, still mergeable, and no review/thread blocker appears. After merge, perform a documentation-only post-merge synchronization before selecting any new provider/runtime capability.**
+**Start `Application Runtime Composition v0.1` as a separate feature increment.**
 
-Do **not** add a second provider, live-network CI, retry/backoff, fallback, streaming, provider-native tool calling, new analysis tools, runtime/finance expansion, or financial write behavior in the integration increment.
+The next increment should add one application-owned construction boundary that:
+
+1. accepts validated `ProviderConfiguration` plus an injected credential source mapping/resolver;
+2. constructs the fixed provider registry containing the approved `openai -> OpenAIProviderFactory` mapping;
+3. builds the selected provider through the existing registry/composer credential boundary;
+4. wraps it in `ModelPortProviderBridge`;
+5. constructs `BoundedModelRuntime` with the existing controlled analysis tool registry;
+6. exposes no model-controlled provider selection, dynamic registration, environment access from lower layers, retry/fallback, provider-native tools, or write path;
+7. is tested entirely with deterministic fakes/monkeypatching so normal CI remains network-free and credential-free.
+
+Do **not** add a CLI/API/UI, live-network CI, second provider, retry/backoff, fallback, streaming, provider-native tool calling, new analysis tools, runtime/finance expansion, or financial write behavior in the same increment.

@@ -24,7 +24,7 @@ This repository is the source of truth for implementation decisions. AI agents m
 5. Material agent conclusions must carry evidence that identifies source fields, periods, dimensions/members when applicable, and available provenance.
 6. The project remains read-only. Do not add payment, posting, filing, deletion, unrestricted SQL, or other financial write actions without an explicit milestone change.
 7. Do not let an LLM silently define accounting formulas, metric semantics, permissions, validation rules, unknown spreadsheet mappings, or business dimensions.
-8. Any new metric, semantic mapping rule, validator, model-callable tool, runtime transition, provider boundary, provider bridge, provider configuration contract, or provider failure contract requires tests covering normal and edge cases.
+8. Any new metric, semantic mapping rule, validator, model-callable tool, runtime transition, provider boundary, provider bridge, provider configuration contract, provider failure contract, or credential-resolution boundary requires tests covering normal and edge cases.
 9. Prefer explicit state transitions and typed models over open-ended autonomous loops.
 10. Fail closed on ambiguous financial semantics. Unknown data must not be guessed into canonical finance fields.
 11. Record milestone-level changes in `docs/DEVELOPMENT_LOG.md`.
@@ -44,25 +44,21 @@ This repository is the source of truth for implementation decisions. AI agents m
 25. Provider configuration must not serialize, log, or embed secret credential values. Credential objects are references only; secret resolution remains application-owned.
 26. Provider request timeout must be bounded and automatic provider retries remain disabled (`max_attempts = 1`) unless a future milestone explicitly changes and validates the runtime policy.
 27. Public provider failure objects must contain only stable failure codes and code-derived safe messages; raw provider diagnostics, exception text, HTTP bodies, request payloads, and credential material must not enter serialized failures.
+28. Credential resolution must remain outside model-callable surfaces. Any resolved secret wrapper must redact representation/serialization and must not be stored in `ProviderConfiguration`, `ModelRequest`, runtime results, evidence, or logs.
 
 ## Current milestone
 
-`Provider Configuration & Safety Contract v0.1`: provider-neutral non-secret configuration, credential references, bounded timeout/no-retry policy, and sanitized provider transport failures before any real provider SDK or network call.
+`Provider Configuration & Safety Contract v0.1`: **COMPLETE — merged via PR #10**.
 
-## Exit conditions for the current milestone
+Completed properties include immutable non-secret provider configuration, environment credential references, bounded 1–120 second timeout, `max_attempts = 1`, immutable code-derived sanitized provider failures, and deterministic safety tests. PR #10 was squash-merged to `main` at `0148962739a80cdb53c25dbbf445dc9584a75a4a` after final PR CI #218 passed.
 
-- typed `ProviderConfiguration` exists with non-blank provider/model identifiers;
-- request timeout is bounded to 1–120 seconds;
-- automatic retries cannot be configured above `max_attempts = 1`;
-- typed `CredentialReference` identifies a credential source and reference name without carrying a secret value;
-- unknown/secret-bearing configuration fields fail closed;
-- stable provider transport failure codes exist;
-- public provider failure messages are derived only from the stable code and cannot be provider-supplied;
-- raw diagnostics, exception text, HTTP bodies, request payloads, and credentials are absent from public failure serialization;
-- deterministic tests cover valid configuration, invalid identifiers/timeouts/retry values, secret-field rejection, stable failure mapping, and failure-message injection rejection;
-- no provider SDK, credential resolution, external network call, retry/backoff, fallback, streaming, provider-specific function calling, new tool, or financial write path is introduced;
-- CI passes on a GitHub-hosted runner;
-- `docs/PROVIDER_SAFETY.md`, development log, and canonical handoff reflect the implemented and verified state.
+No provider SDK, secret resolver, external network call, retry/backoff, fallback, streaming, new model-callable tool, or financial-write path was introduced.
+
+## Next recommended milestone
+
+`Credential Resolver Boundary v0.1`: define an application-owned resolver interface that converts a `CredentialReference` into a protected secret value without making the secret serializable, model-callable, loggable, or part of provider configuration.
+
+Use deterministic/fake resolver tests first. Do not combine this boundary with OpenAI/Anthropic/Gemini SDK installation or external provider network calls.
 
 ## Canonical next action
 

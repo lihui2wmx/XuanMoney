@@ -2,21 +2,19 @@
 
 ## Current status
 
-Milestone: **Provider Configuration & Safety Contract v0.1**
+Milestone: **Provider Configuration & Safety Contract v0.1 — COMPLETE**
 
-Status: **READY FOR INTEGRATION — implementation reviewed; final current-head CI required**
+Status: **INTEGRATED — post-merge handoff synchronization**
 
-Development branch: `feat/provider-configuration-safety-v0.1`
+Main integration commit: `0148962739a80cdb53c25dbbf445dc9584a75a4a`
 
-Integration PR: **#10 — `feat: add provider configuration safety contract v0.1`**
-
-Base: `main` at `23964aaafdf6d3e341550d6c01712e22ecb5b130`, which contains ModelPort Provider Bridge v0.1 and its post-merge handoff synchronization.
+Merged PR: **#10 — `feat: add provider configuration safety contract v0.1`**
 
 The project is licensed under **Apache License 2.0**.
 
-## Implemented provider safety boundary
+## Integrated provider safety boundary
 
-The branch defines provider-neutral configuration and transport-failure contracts before any real provider SDK or network call:
+The repository now defines provider-neutral configuration and transport-failure contracts before any real provider SDK or network call:
 
 ```text
 application-owned configuration / future secret resolver
@@ -39,23 +37,23 @@ ModelPortProviderBridge
 BoundedModelRuntime
 ```
 
-Implemented:
+Integrated through PR #10:
 
 - immutable `ProviderConfiguration` with non-blank `provider_id` and `model_id`;
 - integer `request_timeout_seconds` bounded to 1–120 seconds;
 - `max_attempts` fixed to exactly `1` and protected against post-validation mutation;
-- immutable optional `CredentialReference` carrying only a source and reference identifier, never a secret value;
-- current credential-reference source limited to `environment` and environment-variable identifier syntax;
-- unknown fields rejected with `extra="forbid"`, including attempted API-key/secret fields;
+- immutable `CredentialReference` carrying only a credential source and reference identifier, never a secret value;
+- current credential-reference source limited to `environment`, with environment-variable reference-name syntax;
+- `extra="forbid"` rejection of unknown and attempted secret/API-key fields;
 - stable `ProviderFailureCode` taxonomy;
-- immutable `ProviderFailure` with `message` derived only from the stable failure code, preventing provider-supplied public diagnostics;
-- `ProviderTransportError` exposing only the sanitized `ProviderFailure` contract;
-- deterministic tests for configuration bounds, blank identifiers, retry expansion/mutation, secret-field rejection, stable failure mapping, failure immutability, and message/diagnostic injection rejection;
-- `docs/PROVIDER_SAFETY.md` documenting the trust boundary.
+- immutable `ProviderFailure` whose public `message` is derived only from the stable code;
+- `ProviderTransportError` exposing only the sanitized public failure contract;
+- deterministic tests covering configuration bounds, retry immutability, secret-field rejection, credential-reference syntax, stable failure mapping, failure immutability, and diagnostic/message injection rejection;
+- `docs/PROVIDER_SAFETY.md` documenting the pre-SDK trust boundary.
 
 ## Preserved architecture
 
-Existing path remains:
+The integrated provider-neutral path remains:
 
 ```text
 BoundedModelRuntime
@@ -65,67 +63,58 @@ BoundedModelRuntime
         -> provider adapter (future)
 ```
 
-No `src/xuanmoney/runtime/*`, Finance Kernel, Tool Registry, CI workflow, or dependency changes are part of PR #10.
-
-Runtime invariant remains:
+The runtime invariant remains unchanged:
 
 ```text
 single plan -> at most one registered tool -> single synthesis -> terminal
 ```
 
-## Explicitly out of scope
-
-- OpenAI/Anthropic/Gemini or any other provider SDK;
-- API-key values or secret persistence;
-- environment-variable reading or secret resolution;
-- external provider network calls;
-- retry/backoff or provider fallback;
-- streaming or provider-specific function calling;
-- logging/metrics infrastructure;
-- new model-callable tools;
-- SQL/Python/shell/filesystem expansion;
-- financial write actions.
+Provider Configuration & Safety v0.1 changed no runtime execution code, Finance Kernel, Tool Registry, CI workflow, dependency set, or model-callable surface.
 
 ## Verification
 
-Canonical command:
-
-```bash
-python -m pip install -e ".[dev]"
-pytest
-```
-
-Verified implementation anchor:
+Final PR #10 head:
 
 ```text
-6cefbdac58371bb80b06019aa22c2f67b5d93cb6
+93f2d2b8202cb55db31e82efbad11d61f9d78d4c
 ```
 
-- PR CI #214: **success**;
-- GitHub-hosted `ubuntu-latest`;
+Verification:
+
+- final PR CI #218: **success**;
+- GitHub-hosted `ubuntu-latest` runner;
 - Python 3.12;
-- PR #10 non-draft and mergeable at integration review;
-- no review submissions or unresolved review threads existed at review time;
-- changed-file audit found only provider-model contracts/tests and governance documentation, with no runtime/finance/tool/CI/dependency expansion.
+- PR was non-draft and mergeable at final review;
+- no unresolved review threads;
+- final integration review ID `5096591938` found no remaining architecture or safety blocker;
+- squash merge commit: `0148962739a80cdb53c25dbbf445dc9584a75a4a`.
 
-This handoff synchronization advances the branch beyond the verified implementation anchor, so the latest HEAD must also pass CI before merge.
+## Current limitations
 
-## Integration review
+There is still no real external provider integration. Specifically:
 
-No remaining architecture or safety blocker was found at implementation anchor `6cefbdac...`.
-
-Review specifically confirmed:
-
-- secret values have no declared serializable configuration field;
-- environment credential references are reference names rather than resolved values;
-- timeout and retry policy are bounded and immutable after validation;
-- public failure text is code-derived rather than provider-supplied;
-- public failure objects have no diagnostic/request/credential field;
-- package dependency direction remains unchanged;
-- no real SDK, network call, retry/fallback, new tool, or financial execution surface entered the branch.
+- no credential resolver exists;
+- no credential value is read from environment variables or a secret manager;
+- no protected application-owned secret wrapper exists yet;
+- no OpenAI/Anthropic/Gemini or other provider SDK;
+- no external provider network call;
+- no provider retry/backoff or fallback;
+- no streaming or provider-specific function calling;
+- no provider logging/metrics infrastructure;
+- no production API/UI;
+- no new model-callable tool or financial write capability.
 
 ## Recommended next bounded action
 
-**If latest PR #10 current-head CI is green, squash-merge PR #10.**
+**Start `Credential Resolver Boundary v0.1` on a fresh feature branch.**
 
-After integration, refresh canonical handoff on a documentation-only branch before selecting any real provider SDK milestone.
+The bounded increment should:
+
+1. define an application-owned `CredentialResolver` protocol that accepts the existing `CredentialReference`;
+2. return a protected/opaque secret wrapper whose `repr`, string conversion, and serialization do not reveal the underlying credential;
+3. keep resolved secret values out of `ProviderConfiguration`, `ModelRequest`, runtime results, evidence payloads, logs, and model-callable surfaces;
+4. define deterministic sanitized resolver failure behavior for missing/unavailable references without echoing reference values or secret material;
+5. use deterministic fake/in-memory resolver tests first;
+6. preserve `max_attempts = 1`, the existing runtime invariant, and current package dependency direction.
+
+Do **not** combine Credential Resolver Boundary v0.1 with a real OpenAI/Anthropic/Gemini SDK, actual provider network calls, streaming, retry/backoff, fallback, new analysis tools, or financial write behavior.

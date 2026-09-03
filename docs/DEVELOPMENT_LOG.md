@@ -235,11 +235,7 @@ Start **Controlled Provider Factory Registry v0.1** as a separate bounded increm
 
 ## 2026-09-03 — Controlled Provider Factory Registry v0.1
 
-Status: **READY FOR INTEGRATION**
-
-Branch: `feat/controlled-provider-factory-registry-v0.1`
-
-Integration PR: **#18 — `feat: add controlled provider factory registry v0.1`**
+Status: **COMPLETE — merged via PR #18**
 
 Implemented:
 
@@ -261,7 +257,13 @@ Verification:
 - handoff synchronization head `df23f502e860d10b07ba89c471b29c474cc4da75`: PR CI #310 success;
 - reviewed pre-final-sync head `9322313082cdff06f85a7ad76d8c40310672c0ce`: PR CI #316 success;
 - final handoff head `1f81f1e2b2ca76ab5527f73250855358c5c66625`: PR CI #318 success;
-- branch is `behind_by=0`, PR is mergeable, and no review threads remain unresolved;
-- integration review `5096980951` found no remaining architecture, safety, or bounded-scope blocker.
+- final feature head `4cc6d621c9296cff5424ae13f95b0607a20cb931`: PR CI #320 success;
+- branch was `behind_by=0`, PR was mergeable, and no review threads remained unresolved;
+- integration review `5096980951` found no remaining architecture, safety, or bounded-scope blocker;
+- PR #18 was squash-merged to `main` at `73f7cbb5ffeeeaa79204d5c38f12e2e1c47f6b56`.
 
-No vendor SDK, external provider network call, provider-specific HTTP/auth implementation, retry/backoff, fallback, streaming, secret-manager integration, dynamic provider discovery, new model-callable tool, runtime/finance/tool expansion, or financial write path is introduced.
+No vendor SDK, external provider network call, provider-specific HTTP/auth implementation, retry/backoff, fallback, streaming, secret-manager integration, dynamic provider discovery, new model-callable tool, runtime/finance/tool expansion, or financial write path was introduced.
+
+### Next boundary
+
+Perform a bounded **First Real Provider Adapter v0.1 readiness/design review** before implementation. Select exactly one provider target and define its dependency/client surface, timeout application, authentication construction, request/response translation, stable failure mapping, deterministic test strategy, and preserved no-retry/no-fallback/bounded-runtime constraints before adding real network behavior.

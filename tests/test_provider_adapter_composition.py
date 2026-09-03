@@ -80,6 +80,19 @@ class RecordingFactory:
         return CredentialConsumingFakeAdapter(_FAKE_SECRET, [])
 
 
+class InvalidProviderFactory:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def build(
+        self,
+        configuration: ProviderConfiguration,
+        credential: ProtectedSecret | None,
+    ) -> object:
+        self.calls += 1
+        return object()
+
+
 class UnsupportedResolver:
     def resolve(self, reference: CredentialReference) -> ProtectedSecret:
         raise CredentialResolutionError(
@@ -236,6 +249,26 @@ def test_factory_failure_after_reveal_is_sanitized_without_exception_chain() -> 
     assert _FAKE_SECRET not in repr(error)
     assert error.__cause__ is None
     assert error.__context__ is None
+
+
+def test_invalid_provider_factory_result_fails_closed_at_composition_boundary() -> None:
+    class ResolverThatMustNotRun:
+        def resolve(self, reference: CredentialReference) -> ProtectedSecret:
+            raise AssertionError("resolver should not be called")
+
+    factory = InvalidProviderFactory()
+    composer = ProviderAdapterComposer(
+        resolver=ResolverThatMustNotRun(),
+        factory=factory,
+    )
+
+    with pytest.raises(ProviderTransportError) as caught:
+        composer.build(provider_configuration(with_credential=False))
+
+    assert caught.value.failure.code is ProviderFailureCode.TRANSPORT_ERROR
+    assert factory.calls == 1
+    assert caught.value.__cause__ is None
+    assert caught.value.__context__ is None
 
 
 def test_configuration_without_credential_skips_resolver() -> None:

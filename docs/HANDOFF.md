@@ -4,17 +4,17 @@
 
 Milestone: **Environment Credential Resolver v0.1**
 
-Status: **ACTIVE — implementation and deterministic tests added; PR CI pending**
+Status: **READY FOR INTEGRATION — implementation reviewed; final current-head CI required**
 
 Development branch: `feat/environment-credential-resolver-v0.1`
+
+Integration PR: **#14 — `feat: add environment credential resolver v0.1`**
 
 Base: `main@0df388a1a4479ca626ff6fa62240268b0331994b`.
 
 The project is licensed under **Apache License 2.0**.
 
 ## Implemented environment resolver
-
-The active branch adds the first concrete application-owned credential resolver:
 
 ```text
 application composition
@@ -33,26 +33,19 @@ ProtectedSecret
 future trusted provider integration
 ```
 
-Implemented:
+Implemented and reviewed:
 
 - `EnvironmentCredentialResolver` implements the existing `CredentialResolver` protocol;
-- constructor accepts an injected `Mapping[str, str]` and the credential package does not import or read `os.environ`;
+- constructor accepts an injected `Mapping[str, str]`; credential code does not import or read `os.environ`;
 - present non-empty values resolve to `ProtectedSecret`;
-- missing and empty values normalize to existing `credential_unavailable` failures;
-- unsupported sources normalize to existing `unsupported_source` failures;
-- backing-mapping lookup exceptions are sanitized without retaining cause/context diagnostics;
-- resolver `repr` does not expose the backing mapping or credential values;
-- deterministic tests use injected mappings and `MappingProxyType`, never host environment contents;
+- missing, empty, non-string, and backing-mapping lookup failures normalize to existing `credential_unavailable`;
+- unsupported sources normalize to existing `unsupported_source`;
+- lookup failures are normalized after the backing exception handler so sanitized failures retain no cause/context diagnostics;
+- resolver `repr` does not expose backing mapping data or credential values;
+- deterministic tests use injected mappings and `MappingProxyType`, not host environment contents;
 - existing `ProtectedSecret` redaction/non-serialization behavior is reused unchanged.
 
-## Preserved credential and transport boundary
-
-```text
-ProviderConfiguration
-        -> CredentialReference          # serializable, non-secret
-        -> EnvironmentCredentialResolver
-        -> ProtectedSecret              # runtime-only, redacted/non-serializable
-```
+## Preserved boundaries
 
 Package direction remains:
 
@@ -65,7 +58,7 @@ xuanmoney.model -X-> xuanmoney.credentials
 `ModelRequest.context` and `ModelResponse.metadata` remain strict JSON-safe envelopes,
 so `ProtectedSecret` cannot enter provider transport payloads.
 
-Existing runtime/provider path is unchanged:
+Existing runtime/provider path remains unchanged:
 
 ```text
 BoundedModelRuntime
@@ -85,16 +78,15 @@ Provider configuration remains `max_attempts = 1`.
 
 ## Explicitly out of scope
 
-- no OpenAI/Anthropic/Gemini or other provider SDK;
-- no external provider network calls;
-- no retry/backoff or provider fallback;
-- no streaming or provider-specific function calling;
-- no secret-manager integration;
-- no API-key persistence;
-- no model/runtime/tool/finance direct environment access;
-- no new model-callable tools;
-- no SQL/Python/shell/filesystem expansion;
-- no financial write actions.
+- OpenAI/Anthropic/Gemini or other provider SDKs;
+- external provider network calls;
+- retry/backoff or provider fallback;
+- streaming or provider-specific function calling;
+- secret-manager integration or API-key persistence;
+- model/runtime/tool/finance direct environment access;
+- new model-callable tools;
+- SQL/Python/shell/filesystem expansion;
+- financial write actions.
 
 ## Verification
 
@@ -105,10 +97,24 @@ python -m pip install -e ".[dev]"
 pytest
 ```
 
-Current implementation must pass GitHub-hosted PR CI on `ubuntu-latest` / Python 3.12 before integration review.
+Verified implementation head before this documentation sync:
+
+```text
+fd26abe156678faac91e01f2efdeabbe43ee0222
+```
+
+- PR CI #267: **success**;
+- GitHub-hosted `ubuntu-latest` / Python 3.12;
+- PR #14 non-draft and mergeable at review;
+- branch `behind_by=0`;
+- changed-file audit: 7 files, with production changes limited to `xuanmoney.credentials`;
+- no review submissions or unresolved review threads at review time;
+- no runtime, finance, tool, dependency, CI, SDK, network, retry/fallback, or financial-write expansion.
+
+This handoff synchronization advances the branch beyond the verified implementation head, so latest current-head CI must also pass before merge.
 
 ## Recommended next bounded action
 
-**Open the integration PR and run current-head CI.**
+**If latest current-head PR #14 CI is green, record final integration review and squash-merge PR #14.**
 
-If green, review changed-file scope, package direction, resolver failure sanitization, mapping/repr non-disclosure, and absence of runtime/provider-SDK expansion. Only then mark the branch ready for integration.
+After integration, refresh canonical handoff on a documentation-only branch before selecting the next provider-integration boundary.

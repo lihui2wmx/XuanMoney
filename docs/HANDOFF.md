@@ -4,7 +4,7 @@
 
 Milestone: **Provider Configuration & Safety Contract v0.1**
 
-Status: **IMPLEMENTATION COMPLETE — current-head CI and integration review pending**
+Status: **READY FOR INTEGRATION — implementation reviewed; final current-head CI required**
 
 Development branch: `feat/provider-configuration-safety-v0.1`
 
@@ -41,16 +41,16 @@ BoundedModelRuntime
 
 Implemented:
 
-- `ProviderConfiguration` with non-blank `provider_id` and `model_id`;
+- immutable `ProviderConfiguration` with non-blank `provider_id` and `model_id`;
 - integer `request_timeout_seconds` bounded to 1–120 seconds;
-- `max_attempts` fixed by type and validation to exactly `1`;
-- optional `CredentialReference` that carries only a credential source and identifier, never a secret value;
-- current credential-reference source limited to `environment`;
+- `max_attempts` fixed to exactly `1` and protected against post-validation mutation;
+- immutable optional `CredentialReference` carrying only a source and reference identifier, never a secret value;
+- current credential-reference source limited to `environment` and environment-variable identifier syntax;
 - unknown fields rejected with `extra="forbid"`, including attempted API-key/secret fields;
 - stable `ProviderFailureCode` taxonomy;
-- `ProviderFailure.message` derived only from the stable failure code, so adapters cannot inject raw public diagnostic text;
+- immutable `ProviderFailure` with `message` derived only from the stable failure code, preventing provider-supplied public diagnostics;
 - `ProviderTransportError` exposing only the sanitized `ProviderFailure` contract;
-- deterministic tests for configuration bounds, blank identifiers, retry expansion, secret-field rejection, stable failure mapping, and message/diagnostic injection rejection;
+- deterministic tests for configuration bounds, blank identifiers, retry expansion/mutation, secret-field rejection, stable failure mapping, failure immutability, and message/diagnostic injection rejection;
 - `docs/PROVIDER_SAFETY.md` documenting the trust boundary.
 
 ## Preserved architecture
@@ -65,7 +65,7 @@ BoundedModelRuntime
         -> provider adapter (future)
 ```
 
-This milestone does not change `BoundedModelRuntime`, `ModelPortProviderBridge`, Finance Kernel, Tool Registry, or the runtime execution sequence.
+No `src/xuanmoney/runtime/*`, Finance Kernel, Tool Registry, CI workflow, or dependency changes are part of PR #10.
 
 Runtime invariant remains:
 
@@ -95,17 +95,37 @@ python -m pip install -e ".[dev]"
 pytest
 ```
 
-CI policy:
+Verified implementation anchor:
 
-- GitHub-hosted official runners only;
-- `ubuntu-latest`;
+```text
+6cefbdac58371bb80b06019aa22c2f67b5d93cb6
+```
+
+- PR CI #214: **success**;
+- GitHub-hosted `ubuntu-latest`;
 - Python 3.12;
-- no `self-hosted` runner.
+- PR #10 non-draft and mergeable at integration review;
+- no review submissions or unresolved review threads existed at review time;
+- changed-file audit found only provider-model contracts/tests and governance documentation, with no runtime/finance/tool/CI/dependency expansion.
 
-Current branch changes require current-head CI verification before integration review or merge.
+This handoff synchronization advances the branch beyond the verified implementation anchor, so the latest HEAD must also pass CI before merge.
+
+## Integration review
+
+No remaining architecture or safety blocker was found at implementation anchor `6cefbdac...`.
+
+Review specifically confirmed:
+
+- secret values have no declared serializable configuration field;
+- environment credential references are reference names rather than resolved values;
+- timeout and retry policy are bounded and immutable after validation;
+- public failure text is code-derived rather than provider-supplied;
+- public failure objects have no diagnostic/request/credential field;
+- package dependency direction remains unchanged;
+- no real SDK, network call, retry/fallback, new tool, or financial execution surface entered the branch.
 
 ## Recommended next bounded action
 
-**Verify current-head PR #10 CI, then perform integration review for Provider Configuration & Safety Contract v0.1.**
+**If latest PR #10 current-head CI is green, squash-merge PR #10.**
 
-Review should confirm that secret values have no serializable contract field, timeout/retry policy remains bounded, failure messages cannot carry provider-supplied diagnostic text, package dependency direction remains unchanged, and no SDK/network/execution-surface expansion entered the branch.
+After integration, refresh canonical handoff on a documentation-only branch before selecting any real provider SDK milestone.

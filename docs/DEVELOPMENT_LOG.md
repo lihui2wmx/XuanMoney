@@ -131,3 +131,29 @@ No real provider SDK, credential handling, external model network call, hidden r
 ### Next boundary
 
 Before adding a real provider SDK, define **Provider Configuration & Safety Contract v0.1**: provider-neutral non-secret configuration, credential references rather than secret values, bounded timeout/no-retry behavior, safe provider failure taxonomy/redaction, and deterministic tests.
+
+## 2026-09-03 — Provider Configuration & Safety Contract v0.1
+
+Status: **READY FOR INTEGRATION — implementation review clear; final current-head CI required**
+
+Branch: `feat/provider-configuration-safety-v0.1`
+
+Integration PR: **#10 — `feat: add provider configuration safety contract v0.1`**
+
+Implemented:
+
+- immutable provider-neutral `ProviderConfiguration` with non-blank provider/model identifiers;
+- bounded integer request timeout of 1–120 seconds;
+- `max_attempts` fixed to exactly `1` and protected against post-validation mutation;
+- immutable `CredentialReference` carrying only a source and reference identifier, never a credential value;
+- current credential source limited to an environment-variable reference name without reading the environment;
+- `extra="forbid"` rejection of unknown and attempted secret/API-key fields;
+- stable provider transport failure taxonomy covering configuration, credential availability, authentication, timeout, rate limit, service availability, invalid response, and generic transport failures;
+- immutable public `ProviderFailure` whose message is derived only from its stable code, preventing provider-supplied raw diagnostic text;
+- `ProviderTransportError` exposing only the sanitized failure contract;
+- deterministic tests for valid/invalid configuration, timeout/retry bounds and mutation, environment-reference syntax, secret-field rejection, stable safe messages, failure immutability, and diagnostic/message injection rejection;
+- `docs/PROVIDER_SAFETY.md` defining the pre-SDK trust boundary.
+
+Verified implementation anchor `6cefbdac58371bb80b06019aa22c2f67b5d93cb6` passed PR CI #214 on the official GitHub-hosted `ubuntu-latest` runner with Python 3.12. Integration review found no remaining architecture or safety blocker: changed files are limited to `xuanmoney.model` contracts/tests and governance documentation, with no runtime, finance, tool, CI, dependency, SDK, network, retry/fallback, or financial-write expansion.
+
+This final development-log synchronization advances the branch beyond the verified anchor; merge remains gated on the latest current-head CI being green.

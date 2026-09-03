@@ -67,6 +67,20 @@ def test_environment_resolver_rejects_empty_value_without_exposing_reference():
     assert error.__context__ is None
 
 
+def test_environment_resolver_rejects_non_string_value_fail_closed():
+    values: dict[str, object] = {"INVALID_PROVIDER_KEY": object()}
+    resolver = EnvironmentCredentialResolver(values)  # type: ignore[arg-type]
+
+    with pytest.raises(CredentialResolutionError) as caught:
+        resolver.resolve(environment_reference("INVALID_PROVIDER_KEY"))
+
+    error = caught.value
+    assert error.code is CredentialResolutionFailureCode.CREDENTIAL_UNAVAILABLE
+    assert "INVALID_PROVIDER_KEY" not in str(error)
+    assert error.__cause__ is None
+    assert error.__context__ is None
+
+
 def test_environment_resolver_rejects_unsupported_source_fail_closed():
     reference = CredentialReference.model_construct(
         source="future-secret-manager",

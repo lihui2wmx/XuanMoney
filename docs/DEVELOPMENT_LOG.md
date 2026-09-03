@@ -235,7 +235,7 @@ Start **Controlled Provider Factory Registry v0.1** as a separate bounded increm
 
 ## 2026-09-03 — Controlled Provider Factory Registry v0.1
 
-Status: **ACTIVE — implementation and credential-consuming integration coverage complete; integration review pending**
+Status: **READY FOR INTEGRATION**
 
 Branch: `feat/controlled-provider-factory-registry-v0.1`
 
@@ -255,11 +255,13 @@ Implemented:
 - test secret material is asserted absent from registry/factory/provider representations, provider request serialization, and runtime result serialization;
 - `docs/PROVIDER_REGISTRY.md` documents the provider-selection trust boundary.
 
-Verification anchors:
+Verification:
 
 - core implementation/test head `2300791fa062d66203791fc82906973b6a22106c`: PR CI #308 success;
 - handoff synchronization head `df23f502e860d10b07ba89c471b29c474cc4da75`: PR CI #310 success;
-- credential-consuming integration test commit `1a38d0717cfc0468998310cc93d48e5a644cdc1d`;
-- GitHub-hosted `ubuntu-latest` / Python 3.12 remains the authoritative executable validation environment.
+- reviewed pre-final-sync head `9322313082cdff06f85a7ad76d8c40310672c0ce`: PR CI #316 success;
+- final handoff head `1f81f1e2b2ca76ab5527f73250855358c5c66625`: PR CI #318 success;
+- branch is `behind_by=0`, PR is mergeable, and no review threads remain unresolved;
+- integration review `5096980951` found no remaining architecture, safety, or bounded-scope blocker.
 
 No vendor SDK, external provider network call, provider-specific HTTP/auth implementation, retry/backoff, fallback, streaming, secret-manager integration, dynamic provider discovery, new model-callable tool, runtime/finance/tool expansion, or financial write path is introduced.

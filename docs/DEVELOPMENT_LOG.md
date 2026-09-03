@@ -150,6 +150,40 @@ Final PR head `93f2d2b8202cb55db31e82efbad11d61f9d78d4c` passed GitHub-hosted PR
 
 No real provider SDK, credential resolver, environment read, network call, retry/backoff, fallback, streaming, logging infrastructure, new model-callable tool, execution-surface expansion, or financial write path was introduced.
 
-### Next boundary
+## 2026-09-03 — Credential Resolver Boundary v0.1
 
-Start **Credential Resolver Boundary v0.1** before selecting a real provider SDK. Define an application-owned resolver from `CredentialReference` to a protected/opaque secret wrapper, deterministic sanitized missing-reference failures, and tests proving secret values cannot enter configuration serialization, runtime results, model requests, evidence, logs, or model-callable surfaces.
+Status: **ACTIVE — implementation and deterministic tests added; current-head CI pending**
+
+Branch: `feat/credential-resolver-boundary-v0.1`
+
+Base: `main@63bac1c7025dc7cd712d863e8f144c4e3328bc53`.
+
+Implemented:
+
+- application-owned `CredentialResolver` protocol accepting the existing non-secret `CredentialReference`;
+- runtime-only `ProtectedSecret` wrapper with explicit `reveal()` for a future trusted provider integration boundary;
+- redacted `str`, `repr`, and formatted output;
+- JSON and pickle serialization fail closed rather than expose credential values;
+- `ProtectedSecret` rejects empty values and is immutable after construction;
+- stable `CredentialResolutionFailureCode` taxonomy for unsupported source and unavailable credentials;
+- sanitized `CredentialResolutionError` that stores no reference identifier, secret value, or raw resolver diagnostic;
+- deterministic fake/in-memory resolver tests covering successful resolution, missing references, configuration non-mutation, serialization blocking, redaction, immutability, and diagnostic/reference non-disclosure;
+- `docs/CREDENTIALS.md` defining the application-owned secret-resolution trust boundary;
+- no environment-variable read, secret manager, provider SDK, network call, retry/fallback, runtime/tool/finance expansion, or financial write path.
+
+### Preserved boundary
+
+```text
+ProviderConfiguration -> CredentialReference
+                             |
+                             v
+                    CredentialResolver
+                             |
+                             v
+                       ProtectedSecret
+                             |
+                             v
+                future provider integration
+```
+
+The lower-level model package remains non-secret and serializable; resolved secret values remain outside model/runtime/tool/finance payloads.

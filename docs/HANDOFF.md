@@ -2,42 +2,54 @@
 
 ## Current status
 
-Milestone: **Controlled Provider Factory Registry v0.1 — COMPLETE**
+Milestone: **First Real Provider Adapter v0.1 Readiness/Design**
 
-Status: **INTEGRATED — post-merge handoff synchronization**
+Status: **ACTIVE — OpenAI target selected and implementation boundary defined**
 
-Main integration commit: `73f7cbb5ffeeeaa79204d5c38f12e2e1c47f6b56`
+Development branch: `docs/first-real-provider-adapter-readiness`
 
-Merged PR: **#18 — `feat: add controlled provider factory registry v0.1`**
+Base: `main@cc02dfdf620becae109a3db18552e8befcad0e9b`.
 
-Final PR head: `4cc6d621c9296cff5424ae13f95b0607a20cb931`
-
-PR CI #320 passed on GitHub-hosted `ubuntu-latest` / Python 3.12. Integration review `5096980951` found no remaining architecture, safety, or bounded-scope blocker.
+Previous integrated milestone: **Controlled Provider Factory Registry v0.1 — COMPLETE**, merged via PR #18 at `73f7cbb5ffeeeaa79204d5c38f12e2e1c47f6b56` and post-merge synchronized at `cc02dfdf620becae109a3db18552e8befcad0e9b`.
 
 The project is licensed under **Apache License 2.0**.
 
-## Integrated provider selection boundary
+## Readiness decision
+
+The first real provider target is **OpenAI Responses API** using the official Python `openai` SDK.
+
+The governing design is `docs/OPENAI_PROVIDER_ADAPTER.md`.
+
+This increment is documentation/design only. It does not install the SDK, reveal a live credential, construct a live provider client, or send a provider network request.
+
+## Planned provider boundary
 
 ```text
-ProviderConfiguration
+ProviderConfiguration(provider_id="openai")
         |
         v
 ProviderFactoryRegistry
-  # fixed application-owned allowlist
         |
         v
-ProviderAdapterFactory
+OpenAIProviderFactory
+  # trusted ProtectedSecret.reveal() boundary
         |
         v
-ProviderAdapterComposer
-        |
-        +--> CredentialResolver -> ProtectedSecret
-        |
-        v
-trusted factory reveal/construction boundary
+OpenAI SDK client
+  # timeout=configured seconds
+  # max_retries=0
         |
         v
-ModelProvider
+OpenAIProviderAdapter
+        |
+        v
+ModelProvider.complete(ModelRequest)
+        |
+        v
+Responses API request
+        |
+        v
+ModelResponse
         |
         v
 ModelPortProviderBridge
@@ -46,82 +58,79 @@ ModelPortProviderBridge
 BoundedModelRuntime
 ```
 
-Integrated through PR #18:
+## Design decisions
 
-- immutable snapshot-based `ProviderFactoryRegistry` in application-owned `xuanmoney.providers`;
-- explicit fixed `provider_id -> ProviderAdapterFactory` allowlist;
-- whitespace-normalized, non-blank provider identifiers aligned with `ProviderConfiguration` semantics;
-- duplicate/ambiguous identifiers fail closed during registry construction;
-- invalid factories lacking callable `build()` fail closed before credential resolution;
-- unknown configured providers fail closed as sanitized `ProviderFailureCode.INVALID_CONFIGURATION` before factory invocation;
-- provider selection is driven only by application-owned `ProviderConfiguration.provider_id`;
-- selected factories are composed through the existing `ProviderAdapterComposer`;
-- no public `register()`, dynamic import, entry-point/plugin/filesystem discovery, model-controlled factory loading, fallback, or retry-based switching;
-- deterministic credential-consuming integration selects a fake factory, resolves an injected environment credential, performs trusted reveal only at factory construction, and executes through `ModelPortProviderBridge` and `BoundedModelRuntime`;
-- test secret material remains absent from registry/factory/provider representations, provider request serialization, and runtime result serialization;
-- `docs/PROVIDER_REGISTRY.md` documents the selection and credential-safety boundary.
+- registry identifier is exactly `openai`;
+- implementation dependency target is `openai>=3.7,<4`;
+- only application-owned `xuanmoney.providers` code may import the provider SDK;
+- `xuanmoney.model`, runtime, finance, tools, and credentials packages remain provider-SDK-free;
+- trusted `OpenAIProviderFactory` may reveal `ProtectedSecret` only to construct the SDK client;
+- SDK client construction must explicitly set `max_retries=0` so repository `max_attempts = 1` remains true;
+- `ProviderConfiguration.request_timeout_seconds` maps to the SDK timeout;
+- `ProviderConfiguration.model_id` maps directly to the Responses API model parameter;
+- one `ModelRequest` maps to at most one synchronous Responses API request;
+- initial request translation uses instructions/input only; no provider-native tool surface is enabled;
+- successful canonical text output maps to `ModelResponse(content=..., provider="openai")`;
+- blank/missing/unusable text fails closed as `INVALID_RESPONSE`;
+- raw SDK response objects must not enter `ModelResponse.metadata`;
+- provider-specific failures normalize into the existing stable `ProviderFailureCode` taxonomy without raw diagnostics, response bodies, request payloads, headers, credentials, cause chains, or context chains.
 
-## Preserved boundaries
-
-Allowed package direction remains:
-
-```text
-xuanmoney.providers   -> xuanmoney.credentials
-xuanmoney.providers   -> xuanmoney.model
-xuanmoney.credentials -> xuanmoney.model
-xuanmoney.runtime     -> xuanmoney.model
-```
-
-Forbidden reverse dependencies remain:
+Required failure classes to cover deterministically:
 
 ```text
-xuanmoney.model       -X-> xuanmoney.credentials
-xuanmoney.model       -X-> xuanmoney.providers
-xuanmoney.credentials -X-> xuanmoney.providers
+authentication/credential failure -> AUTHENTICATION_FAILED
+timeout                           -> TIMEOUT
+rate limit                        -> RATE_LIMITED
+service / >=500                   -> SERVICE_UNAVAILABLE
+connection / transport            -> TRANSPORT_ERROR
+bad application-owned configuration where reliably classifiable -> INVALID_CONFIGURATION
+missing/unusable response text    -> INVALID_RESPONSE
+unexpected SDK exception          -> TRANSPORT_ERROR
 ```
 
-The registry is not model-callable and does not receive model output. Credential reveal remains confined to a trusted `ProviderAdapterFactory`; registry and generic composition code never call `ProtectedSecret.reveal()`.
-
-Runtime/provider policy remains:
+## Preserved invariants
 
 ```text
 single plan -> at most one registered tool -> single synthesis -> terminal
 max_attempts = 1
+one ModelProvider.complete() call per reached runtime phase
 ```
 
-## Verification
+The implementation milestone must not introduce SDK retries, application retry/backoff, provider/model fallback, streaming, background responses, provider-native tools/function calling, autonomous tool loops, filesystem/SQL/Python/shell access, new model-callable analysis tools, runtime/finance expansion, or financial writes.
 
-- final feature head `4cc6d621c9296cff5424ae13f95b0607a20cb931`: GitHub-hosted PR CI #320 success;
-- branch was `behind_by=0` and PR was mergeable immediately before merge;
-- no unresolved review threads;
-- integration review `5096980951` found no remaining blocker;
-- squash merge commit: `73f7cbb5ffeeeaa79204d5c38f12e2e1c47f6b56`;
-- no local-test result is claimed because the execution environment could not resolve `github.com`; GitHub-hosted CI is the executable verification authority for this session.
+## Deterministic implementation test plan
+
+The next implementation milestone should use fake/monkeypatched SDK clients before any live integration and prove:
+
+1. `provider_id="openai"` selects only the OpenAI factory;
+2. credential reveal occurs only at trusted client construction;
+3. client construction receives configured timeout and `max_retries=0`;
+4. model ID, instructions, and input are translated exactly once;
+5. successful text maps to a valid `ModelResponse`;
+6. authentication, timeout, rate-limit, service, invalid-response, configuration, and generic transport failures normalize to stable safe codes;
+7. secret material and raw provider diagnostics remain absent from repr, transport serialization, runtime results, and public failures;
+8. deterministic execution works through `ModelPortProviderBridge` and `BoundedModelRuntime`;
+9. provider failure causes no retry or second provider call;
+10. no provider-native tool configuration is sent.
 
 ## Current limitations
 
-- no real provider factory implementation exists;
-- no OpenAI/Anthropic/Gemini or other vendor SDK is installed;
-- no external model-provider network call exists;
-- no provider-specific HTTP/auth request translation exists;
-- no retry/backoff or provider fallback;
-- no streaming or provider-specific function/tool calling;
-- no secret-manager integration or credential persistence;
-- no production API/UI;
-- no new model-callable tool, runtime/finance/tool expansion, or financial write capability.
+- the official OpenAI SDK is not yet installed;
+- no `OpenAIProviderFactory` or OpenAI adapter implementation exists yet;
+- no live provider network call or credential test exists;
+- no second provider is selected;
+- no retry/backoff, fallback, streaming, provider-native tools, secret manager, production API/UI, new analysis tool, or financial write capability exists.
 
 ## Recommended next bounded action
 
-**Perform a First Real Provider Adapter v0.1 readiness/design review before implementation.**
+**After this readiness/design PR passes CI and review, integrate it; then start `OpenAI Provider Adapter v0.1` on a fresh feature branch.**
 
-The review should select exactly one provider target and define:
+The implementation increment should add only:
 
-1. the concrete SDK/client dependency and minimal dependency footprint;
-2. how `ProviderConfiguration.model_id` and `request_timeout_seconds` map into one provider request;
-3. how a trusted factory consumes `ProtectedSecret` only for client/auth construction;
-4. translation from `ModelRequest` to provider-specific request payload and back to `ModelResponse`;
-5. mapping of provider-specific authentication, timeout, rate-limit, service, invalid-response, and transport failures into existing stable `ProviderFailureCode` values without diagnostic leakage;
-6. tests that use deterministic fakes/mocks before any live credential or network integration;
-7. explicit preservation of `max_attempts = 1`, no fallback, no streaming, no provider-native autonomous tool loop, and the bounded runtime invariant.
+1. bounded official `openai` SDK dependency;
+2. one trusted `OpenAIProviderFactory` and one `ModelProvider` adapter;
+3. deterministic fake-SDK tests covering request/response and failure mapping;
+4. registry/composer/bridge/runtime integration coverage;
+5. milestone documentation/handoff synchronization.
 
-Do **not** implement multiple providers, retry/backoff, fallback, streaming, provider-specific tool calling, new analysis tools, runtime/finance expansion, or financial write behavior in the readiness/design increment.
+Do **not** add Anthropic/Gemini/Azure/Bedrock support, live-network CI, retry/backoff, fallback, streaming, provider-native tool calling, new analysis tools, runtime/finance expansion, or financial write behavior.

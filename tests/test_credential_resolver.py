@@ -21,13 +21,11 @@ class FakeCredentialResolver(CredentialResolver):
             raise CredentialResolutionError(
                 CredentialResolutionFailureCode.UNSUPPORTED_SOURCE
             )
-        try:
-            value = self._values[reference.identifier]
-        except KeyError:
+        if reference.identifier not in self._values:
             raise CredentialResolutionError(
                 CredentialResolutionFailureCode.CREDENTIAL_UNAVAILABLE
-            ) from None
-        return ProtectedSecret(value)
+            )
+        return ProtectedSecret(self._values[reference.identifier])
 
 
 def test_resolver_returns_protected_secret_without_mutating_configuration():
@@ -82,7 +80,7 @@ def test_protected_secret_is_immutable_and_rejects_empty_values():
         ProtectedSecret("")
 
 
-def test_missing_credential_failure_is_sanitized_without_cause_chain():
+def test_missing_credential_failure_is_sanitized_without_exception_chain():
     reference = CredentialReference(
         source=CredentialSource.ENVIRONMENT,
         identifier="HIGHLY_SENSITIVE_REFERENCE_NAME",
@@ -96,6 +94,7 @@ def test_missing_credential_failure_is_sanitized_without_cause_chain():
     assert error.code is CredentialResolutionFailureCode.CREDENTIAL_UNAVAILABLE
     assert str(error) == "credential is unavailable"
     assert error.__cause__ is None
+    assert error.__context__ is None
     assert "HIGHLY_SENSITIVE_REFERENCE_NAME" not in str(error)
     assert "HIGHLY_SENSITIVE_REFERENCE_NAME" not in repr(error)
 

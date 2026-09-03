@@ -4,13 +4,21 @@
 
 Milestone: **First Real Provider Adapter v0.1 Readiness/Design**
 
-Status: **ACTIVE — OpenAI target selected and implementation boundary defined**
+Status: **READY FOR INTEGRATION — OpenAI target/design reviewed; current-head CI required**
 
 Development branch: `docs/first-real-provider-adapter-readiness`
 
+Integration PR: **#20 — `docs: define first real provider adapter readiness`**
+
 Base: `main@cc02dfdf620becae109a3db18552e8befcad0e9b`.
 
-Previous integrated milestone: **Controlled Provider Factory Registry v0.1 — COMPLETE**, merged via PR #18 at `73f7cbb5ffeeeaa79204d5c38f12e2e1c47f6b56` and post-merge synchronized at `cc02dfdf620becae109a3db18552e8befcad0e9b`.
+Reviewed head before this final handoff synchronization:
+
+```text
+9207ff77ae69d5aebf516347b21fe0d85ad9e4b1
+```
+
+PR CI #332 passed on GitHub-hosted `ubuntu-latest` / Python 3.12. Integration design review `5102812238` found no remaining architecture, safety, dependency, or bounded-scope blocker.
 
 The project is licensed under **Apache License 2.0**.
 
@@ -113,6 +121,18 @@ The next implementation milestone should use fake/monkeypatched SDK clients befo
 9. provider failure causes no retry or second provider call;
 10. no provider-native tool configuration is sent.
 
+## Verification
+
+- branch base: `main@cc02dfdf620becae109a3db18552e8befcad0e9b`;
+- readiness/design head before final handoff sync: `9207ff77ae69d5aebf516347b21fe0d85ad9e4b1`;
+- PR #20: documentation-only, three changed files before final sync;
+- PR CI #332: **success**;
+- branch was `behind_by=0` at review time;
+- integration design review `5102812238`: no blocker;
+- no SDK dependency or production code was added.
+
+This final HANDOFF synchronization advances the branch beyond the reviewed head, so current-head GitHub-hosted CI must pass before merge.
+
 ## Current limitations
 
 - the official OpenAI SDK is not yet installed;
@@ -123,7 +143,7 @@ The next implementation milestone should use fake/monkeypatched SDK clients befo
 
 ## Recommended next bounded action
 
-**After this readiness/design PR passes CI and review, integrate it; then start `OpenAI Provider Adapter v0.1` on a fresh feature branch.**
+**Verify current-head PR CI, integrate PR #20 if still current/mergeable, then start `OpenAI Provider Adapter v0.1` on a fresh feature branch.**
 
 The implementation increment should add only:
 

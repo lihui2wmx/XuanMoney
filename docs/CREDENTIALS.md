@@ -19,7 +19,7 @@ ProviderConfiguration
         CredentialResolver         # application-owned
                   |
                   v
-          ProtectedSecret           # runtime-only, opaque/redacted
+          ProtectedSecret          # runtime-only, opaque/redacted
                   |
                   v
         future provider integration
@@ -46,8 +46,30 @@ Required behavior:
 - empty secret values are rejected.
 
 `reveal()` must never be used to place a secret in `ProviderConfiguration`,
-`ModelRequest`, runtime results, finance evidence, logs, error messages, or any
-model-callable payload.
+`ModelRequest`, `ModelResponse`, runtime results, finance evidence, logs, error messages,
+or any model-callable payload.
+
+## Model transport guard
+
+The provider transport envelope is hardened generically rather than importing the
+credential package into `xuanmoney.model`.
+
+`ModelRequest.context` and `ModelResponse.metadata` must contain only strict JSON-safe
+values. Validation uses standard JSON encoding with non-standard numeric constants
+(`NaN`, `Infinity`, `-Infinity`) disabled. Non-serializable values such as
+`ProtectedSecret` are rejected before entering the provider transport contract.
+
+Transport validation also hides invalid input values from Pydantic error strings. This
+prevents a validation failure from becoming a diagnostic side channel for an unsafe
+object representation.
+
+This preserves package direction:
+
+```text
+xuanmoney.credentials -> xuanmoney.model
+```
+
+There is no reverse `xuanmoney.model -> xuanmoney.credentials` dependency.
 
 ## Resolver protocol
 
@@ -75,7 +97,8 @@ Resolver failures must not store or echo:
 - resolved secret values;
 - raw secret-manager diagnostics;
 - environment contents;
-- provider request/response data.
+- provider request/response data;
+- underlying exception chains containing credential reference material.
 
 ## Preserved runtime policy
 

@@ -2,21 +2,19 @@
 
 ## Current status
 
-Milestone: **Credential Resolver Boundary v0.1**
+Milestone: **Credential Resolver Boundary v0.1 — COMPLETE**
 
-Status: **ACTIVE — integration-review hardening applied; current-head CI pending**
+Status: **INTEGRATED — post-merge handoff synchronization**
 
-Development branch: `feat/credential-resolver-boundary-v0.1`
+Main integration commit: `84edd3e90c9c5c2551e5314410bd7eb554cfe75e`
 
-Integration PR: **#12 — `feat: add credential resolver boundary v0.1`**
-
-Base: `main` at `63bac1c7025dc7cd712d863e8f144c4e3328bc53`, which contains Provider Configuration & Safety Contract v0.1 and its post-merge handoff synchronization.
+Merged PR: **#12 — `feat: add credential resolver boundary v0.1`**
 
 The project is licensed under **Apache License 2.0**.
 
-## Implemented credential boundary
+## Integrated credential boundary
 
-The branch adds the application-owned layer between serializable credential references and future real provider integration:
+The repository now contains an application-owned boundary between serializable credential references and future real provider integration:
 
 ```text
 ProviderConfiguration
@@ -33,46 +31,40 @@ ProviderConfiguration
         future provider integration
 ```
 
-Implemented:
+Integrated through PR #12:
 
 - `CredentialResolver.resolve(CredentialReference) -> ProtectedSecret` protocol;
-- `ProtectedSecret` rejecting empty values and immutable after construction;
-- `ProtectedSecret.__str__`, `__repr__`, and formatted output are redacted;
-- JSON serialization fails instead of exposing the secret;
-- pickle serialization fails instead of persisting the secret;
-- explicit `reveal()` is the only supported value-extraction operation and is reserved for a future trusted provider integration boundary;
-- sanitized `CredentialResolutionFailureCode` values for unsupported source and unavailable credential;
-- `CredentialResolutionError` stores only the stable code and fixed safe message, with no credential reference or raw diagnostic payload;
-- deterministic fake/in-memory resolver tests for successful and missing-reference paths;
-- fake missing-reference behavior avoids retaining an underlying exception cause/context containing the reference identifier;
-- tests proving resolved values remain absent from serialized `ProviderConfiguration`;
-- `docs/CREDENTIALS.md` describing the trust and package boundary.
+- immutable `ProtectedSecret` rejecting empty values;
+- redacted `str`, `repr`, and formatted output;
+- JSON and pickle serialization fail closed;
+- explicit `reveal()` reserved for a future trusted provider integration boundary;
+- stable sanitized credential-resolution failure codes/messages;
+- missing-reference fake resolution avoids retaining a secret-bearing cause/context chain;
+- deterministic fake/in-memory resolver tests;
+- strict JSON-safe validation for `ModelRequest.context` and `ModelResponse.metadata`;
+- rejection of arbitrary Python objects, including `ProtectedSecret`, from provider transport envelopes;
+- rejection of `NaN`/`Infinity` transport values;
+- invalid transport input values hidden from Pydantic error strings;
+- `Field(default_factory=dict)` used for transport mapping defaults;
+- no reverse `xuanmoney.model -> xuanmoney.credentials` dependency;
+- `docs/CREDENTIALS.md` and updated provider-contract documentation.
 
-## Integration-review hardening
+## Preserved architecture
 
-The first integration review identified that `ProtectedSecret` itself was non-serializable, but the existing provider transport envelopes still used `dict[str, object]`, allowing an arbitrary Python object to be placed into `ModelRequest.context` or `ModelResponse.metadata` before serialization.
-
-The branch therefore adds a package-neutral transport guard in `xuanmoney.model`:
-
-- `ModelRequest.context` and `ModelResponse.metadata` must pass strict standard JSON serialization;
-- non-standard `NaN`/`Infinity` values are rejected;
-- arbitrary objects, including `ProtectedSecret`, are rejected before entering transport envelopes;
-- Pydantic invalid-input values are hidden from validation-error text;
-- `Field(default_factory=dict)` replaces mutable dict defaults;
-- `xuanmoney.model` does not import `xuanmoney.credentials`, preserving dependency direction.
-
-## Package direction
+Package direction:
 
 ```text
 xuanmoney.credentials -> xuanmoney.model
+xuanmoney.runtime     -> xuanmoney.model
+```
+
+Prohibited reverse dependency:
+
+```text
 xuanmoney.model -X-> xuanmoney.credentials
 ```
 
-Runtime, tools, and finance code do not receive resolved secret values.
-
-## Preserved architecture and policy
-
-Existing model/runtime path remains unchanged:
+Existing runtime/provider path remains:
 
 ```text
 BoundedModelRuntime
@@ -90,35 +82,52 @@ single plan -> at most one registered tool -> single synthesis -> terminal
 
 Provider configuration remains `max_attempts = 1`.
 
-## Explicitly out of scope
-
-- reading real environment variables;
-- secret-manager integration;
-- API-key persistence;
-- OpenAI/Anthropic/Gemini or other provider SDK;
-- external provider network calls;
-- retry/backoff or provider fallback;
-- streaming or provider-specific function calling;
-- logging/metrics infrastructure;
-- new model-callable tools;
-- SQL/Python/shell/filesystem expansion;
-- financial write actions.
-
 ## Verification
 
-Canonical command:
+Final PR #12 head:
 
-```bash
-python -m pip install -e ".[dev]"
-pytest
+```text
+3640269d2e47551c77bce97e9b8fbccfd4714d54
 ```
 
-Pre-hardening implementation anchor `0ebfee86048a09f1af5d9ab490624c87dd491eba` passed PR CI #237 on GitHub-hosted `ubuntu-latest` / Python 3.12.
+Verification:
 
-The transport-hardening commits advance the branch beyond that anchor. Latest current-head CI must pass before integration review can be considered clear.
+- pre-hardening anchor `0ebfee86048a09f1af5d9ab490624c87dd491eba`: PR CI #237 success;
+- final transport-hardened head: PR CI #248 success;
+- GitHub-hosted `ubuntu-latest` runner;
+- Python 3.12;
+- branch was ahead of and not behind `main` at final review;
+- no unresolved review threads;
+- final integration review ID `5096676763` found no remaining architecture or safety blocker;
+- squash merge commit: `84edd3e90c9c5c2551e5314410bd7eb554cfe75e`.
+
+## Current limitations
+
+There is still no concrete production credential resolver or real provider integration:
+
+- no real `os.environ` read;
+- no secret-manager integration;
+- no API-key persistence;
+- no OpenAI/Anthropic/Gemini or other provider SDK;
+- no external provider network call;
+- no provider retry/backoff or fallback;
+- no streaming or provider-specific function calling;
+- no provider logging/metrics infrastructure;
+- no production API/UI;
+- no new model-callable tool or financial write capability.
 
 ## Recommended next bounded action
 
-**Run current-head PR #12 CI after transport hardening.**
+**Start `Environment Credential Resolver v0.1` on a fresh feature branch.**
 
-If green, re-check changed-file scope, package direction, PR threads, secret non-serialization/transport rejection, and sanitized resolver failures. Then mark the branch ready for integration.
+The bounded increment should:
+
+1. implement a concrete application-owned resolver for existing `CredentialSource.ENVIRONMENT` references;
+2. accept an injected/read-only mapping so tests never depend on the process environment;
+3. optionally provide a narrow application-owned composition helper for `os.environ` only if it does not broaden model/runtime access to environment variables;
+4. return only `ProtectedSecret` and never expose raw values through configuration, model transport, runtime results, errors, evidence, or logs;
+5. convert missing/unsupported references into the existing sanitized credential-resolution failures without retaining secret-bearing exception chains;
+6. use deterministic tests for present, missing, empty, and unsupported values;
+7. preserve strict JSON-safe model transport, `max_attempts = 1`, package direction, and the bounded runtime invariant.
+
+Do **not** combine Environment Credential Resolver v0.1 with a real provider SDK, external provider network calls, retry/backoff, fallback, streaming, new analysis tools, or financial write behavior.

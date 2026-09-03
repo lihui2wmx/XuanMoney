@@ -48,25 +48,23 @@ This repository is the source of truth for implementation decisions. AI agents m
 28. Credential resolution must remain outside model-callable surfaces. Any resolved secret wrapper must redact representation/serialization and must not be stored in `ProviderConfiguration`, `ModelRequest`, runtime results, evidence, or logs.
 29. `xuanmoney.credentials` is an application-owned credential boundary. It may depend on model-layer credential references; `xuanmoney.model`, runtime, tools, and finance code must not depend on resolved secret values.
 30. Revealing a protected credential is an explicit trusted-boundary operation. Do not reveal a secret for diagnostics, validation messages, logging, evidence, prompt/model context, or test snapshots.
+31. `ModelRequest.context` and `ModelResponse.metadata` must remain strict JSON-safe transport envelopes; arbitrary Python objects and non-standard JSON numeric constants must fail closed without exposing invalid input values in validation diagnostics.
 
 ## Current milestone
 
-`Credential Resolver Boundary v0.1`: **ACTIVE**.
+`Credential Resolver Boundary v0.1`: **COMPLETE — merged via PR #12**.
 
-The milestone defines an application-owned `CredentialResolver` protocol over the existing non-secret `CredentialReference`, a runtime-only `ProtectedSecret`, and sanitized credential-resolution failures. Deterministic fake/in-memory tests must prove that normal string/representation and serialization paths do not expose resolved values.
+Completed properties include an application-owned `CredentialResolver`, immutable/redacted/non-serializable `ProtectedSecret`, sanitized credential-resolution failures without retained secret-bearing exception chains, and strict JSON-safe model transport envelopes that reject secret wrapper objects without introducing a reverse model-to-credentials dependency.
 
-## Exit conditions for the current milestone
+PR #12 final head `3640269d2e47551c77bce97e9b8fbccfd4714d54` passed GitHub-hosted PR CI #248 and was squash-merged to `main` at `84edd3e90c9c5c2551e5314410bd7eb554cfe75e` after integration review `5096676763` found no remaining blocker.
 
-- `CredentialResolver.resolve(CredentialReference) -> ProtectedSecret` exists as an application-owned protocol;
-- `ProtectedSecret` rejects empty values, is immutable, and redacts `str`, `repr`, and formatted output;
-- common JSON and pickle serialization paths fail rather than expose the secret value;
-- resolved values remain absent from `ProviderConfiguration`, `ModelRequest`, runtime results, evidence, and model-callable payloads;
-- credential-resolution failures expose stable safe codes/messages without storing or echoing reference identifiers, secret values, or raw diagnostics;
-- deterministic fake/in-memory resolver tests cover successful resolution and missing-reference behavior;
-- package direction remains `xuanmoney.credentials -> xuanmoney.model` for reference types, never the reverse;
-- no real environment read, secret manager, provider SDK, network call, retry/backoff, fallback, new tool, or financial-write path is introduced;
-- CI passes on the official GitHub-hosted runner;
-- `docs/CREDENTIALS.md`, development log, and canonical handoff reflect the reviewed state.
+No real environment-variable read, secret manager, provider SDK, external network call, retry/backoff, fallback, new model-callable tool, or financial-write path was introduced.
+
+## Next recommended milestone
+
+`Environment Credential Resolver v0.1`: implement the first concrete application-owned resolver for existing `environment` references using an injected/read-only environment mapping, while preserving `ProtectedSecret`, sanitized missing-reference behavior, no logging, and all current model/runtime boundaries.
+
+Do not combine that resolver milestone with OpenAI/Anthropic/Gemini SDK installation or provider network calls.
 
 ## Canonical next action
 

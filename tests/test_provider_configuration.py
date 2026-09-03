@@ -68,8 +68,18 @@ def test_provider_configuration_forbids_retry_expansion():
             max_attempts=2,
         )
 
+    config = ProviderConfiguration(provider_id="provider", model_id="model")
+    with pytest.raises(ValidationError):
+        config.max_attempts = 2
 
-def test_credential_reference_rejects_secret_material_fields():
+
+def test_credential_reference_is_an_environment_reference_not_secret_payload():
+    with pytest.raises(ValidationError):
+        CredentialReference(
+            source="environment",
+            identifier="sk-live-secret-value",
+        )
+
     with pytest.raises(ValidationError):
         CredentialReference(
             source="environment",

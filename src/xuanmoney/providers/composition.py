@@ -64,7 +64,7 @@ class ProviderAdapterComposer:
 
         if failure_code is not None:
             raise ProviderTransportError(failure_code)
-        if provider is None:
+        if provider is None or not callable(getattr(provider, "complete", None)):
             raise ProviderTransportError(ProviderFailureCode.TRANSPORT_ERROR)
         return provider
 

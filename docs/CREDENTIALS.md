@@ -2,11 +2,12 @@
 
 ## Scope
 
-This milestone defines the application-owned boundary that resolves a non-secret
-`CredentialReference` into a protected runtime-only secret value.
+This document defines the application-owned credential-resolution boundary from a
+non-secret `CredentialReference` to a protected runtime-only secret value. It also
+documents the first concrete environment-reference resolver.
 
-It does not read real environment variables, integrate a secret manager, install a
-provider SDK, or make a provider network call.
+The credential layer does not install a provider SDK, make provider network calls, add
+retries, or expose secrets to model/runtime/tool/finance payloads.
 
 ## Boundary
 
@@ -26,7 +27,7 @@ ProviderConfiguration
 ```
 
 `xuanmoney.model` remains the provider-neutral transport/configuration layer.
-`xuanmoney.credentials` may depend on the model-layer `CredentialReference`; the model
+`xuanmoney.credentials` may depend on model-layer credential references; the model
 package must not depend upward on credential resolution.
 
 ## ProtectedSecret
@@ -51,25 +52,20 @@ or any model-callable payload.
 
 ## Model transport guard
 
-The provider transport envelope is hardened generically rather than importing the
-credential package into `xuanmoney.model`.
+`ModelRequest.context` and `ModelResponse.metadata` contain only strict JSON-safe
+values. Standard JSON encoding is validated with `NaN`, `Infinity`, and `-Infinity`
+disabled. Non-serializable values such as `ProtectedSecret` fail closed before entering
+the provider transport contract.
 
-`ModelRequest.context` and `ModelResponse.metadata` must contain only strict JSON-safe
-values. Validation uses standard JSON encoding with non-standard numeric constants
-(`NaN`, `Infinity`, `-Infinity`) disabled. Non-serializable values such as
-`ProtectedSecret` are rejected before entering the provider transport contract.
-
-Transport validation also hides invalid input values from Pydantic error strings. This
-prevents a validation failure from becoming a diagnostic side channel for an unsafe
-object representation.
+Transport validation hides invalid input values from Pydantic error strings so unsafe
+object representations do not become a diagnostic side channel.
 
 This preserves package direction:
 
 ```text
 xuanmoney.credentials -> xuanmoney.model
+xuanmoney.model -X-> xuanmoney.credentials
 ```
-
-There is no reverse `xuanmoney.model -> xuanmoney.credentials` dependency.
 
 ## Resolver protocol
 
@@ -77,9 +73,47 @@ There is no reverse `xuanmoney.model -> xuanmoney.credentials` dependency.
 CredentialResolver.resolve(CredentialReference) -> ProtectedSecret
 ```
 
-Resolver implementations are application-owned composition components. The production
-code in this milestone defines only the protocol and safety contracts. Tests use a
-deterministic in-memory fake resolver; no process environment is read.
+Resolvers are application-owned composition components. They expose only a protected
+secret or a sanitized credential-resolution failure.
+
+## EnvironmentCredentialResolver
+
+`EnvironmentCredentialResolver` is the first concrete resolver. It supports existing
+`CredentialSource.ENVIRONMENT` references and receives the environment data as an
+injected `Mapping[str, str]`.
+
+```text
+application composition
+        |
+        +--> Mapping[str, str]
+                  |
+                  v
+EnvironmentCredentialResolver
+                  |
+                  +--> present non-empty value -> ProtectedSecret
+                  |
+                  +--> missing/empty/lookup failure -> credential_unavailable
+```
+
+The class itself does **not** import or read `os.environ`. A future application
+composition root may explicitly pass a process-environment mapping, but that does not
+grant environment access to `xuanmoney.model`, runtime, tools, finance code, or the
+model-callable surface.
+
+The resolver:
+
+- never returns a raw credential string;
+- does not mutate the injected mapping;
+- redacts its own representation rather than showing the mapping;
+- maps missing and empty values to the existing `credential_unavailable` failure;
+- maps unsupported sources to `unsupported_source`;
+- normalizes backing-mapping lookup exceptions without preserving their diagnostic
+  exception chain;
+- does not echo reference identifiers, mapping values, or backing diagnostics in its
+  public failures.
+
+Tests use deterministic injected mappings, including `MappingProxyType`, and therefore
+do not depend on host environment contents.
 
 ## Failure contract
 
@@ -95,7 +129,7 @@ Resolver failures must not store or echo:
 
 - credential reference identifiers;
 - resolved secret values;
-- raw secret-manager diagnostics;
+- raw secret-manager or mapping diagnostics;
 - environment contents;
 - provider request/response data;
 - underlying exception chains containing credential reference material.
@@ -113,11 +147,10 @@ tool registry, or introduce financial write behavior.
 
 ## Explicitly out of scope
 
-- reading `os.environ`;
+- provider SDKs;
+- external provider network calls;
 - cloud/local secret-manager integrations;
 - API-key persistence;
-- OpenAI/Anthropic/Gemini or any other provider SDK;
-- external provider network calls;
 - retry/backoff or provider fallback;
 - streaming or provider-specific function calling;
 - logging/metrics infrastructure;

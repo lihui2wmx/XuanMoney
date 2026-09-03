@@ -2,122 +2,128 @@
 
 ## Current status
 
-Milestone: **Environment Credential Resolver v0.1 — COMPLETE**
+Milestone: **Provider Adapter Credential Injection v0.1**
 
-Status: **INTEGRATED — post-merge handoff synchronization**
+Status: **ACTIVE — implementation and deterministic runtime-path tests added; documentation sync in progress**
 
-Main integration commit: `67c957eb199efc8ee8b7c8955635e667237b58f7`
+Development branch: `feat/provider-adapter-credential-injection-v0.1`
 
-Merged PR: **#14 — `feat: add environment credential resolver v0.1`**
+Integration PR: **#16 — `feat: add provider adapter credential injection v0.1`**
+
+Base: `main@3dc2e5883556048d378b23228d85598a3d620736`, which contains Environment Credential Resolver v0.1 and its post-merge handoff synchronization.
 
 The project is licensed under **Apache License 2.0**.
 
-## Integrated environment resolver
+## Implemented composition boundary
 
 ```text
-application composition
-        |
-        +--> injected Mapping[str, str]
-                  |
-                  v
-EnvironmentCredentialResolver
-                  |
-                  +--> CredentialReference(environment)
-                  |
-                  v
-ProtectedSecret
-                  |
-                  v
-future trusted provider integration
+ProviderConfiguration              CredentialResolver
+        |                                 |
+        |                                 v
+        |                         ProtectedSecret
+        |                                 |
+        +---------------+-----------------+
+                        v
+              ProviderAdapterComposer
+                        |
+                        v
+              ProviderAdapterFactory
+              # trusted construction boundary
+                        |
+                        v
+                  ModelProvider
+                        |
+                        v
+              ModelPortProviderBridge
+                        |
+                        v
+              BoundedModelRuntime
 ```
 
-Integrated through PR #14:
+Implemented:
 
-- `EnvironmentCredentialResolver` implements the existing `CredentialResolver` protocol;
-- constructor accepts an injected `Mapping[str, str]`; the credential package does not import or read `os.environ`;
-- present non-empty values resolve to `ProtectedSecret` only;
-- missing, empty, non-string, and backing-mapping lookup failures normalize to existing `credential_unavailable`;
-- unsupported sources normalize to existing `unsupported_source`;
-- backing-mapping lookup failures are normalized without retaining raw diagnostic cause/context chains;
-- resolver representation does not expose the backing mapping or credential values;
-- deterministic tests use injected mappings and `MappingProxyType`, not host environment contents;
-- existing `ProtectedSecret` redaction/non-serialization behavior is unchanged.
+- new application-owned `xuanmoney.providers` package;
+- `ProviderAdapterFactory` protocol for trusted provider/client construction;
+- `ProviderAdapterComposer` accepting a `CredentialResolver` plus factory;
+- optional credential references are resolved exactly once before adapter construction;
+- the generic composer never calls `ProtectedSecret.reveal()`;
+- only a trusted factory implementation receives `ProtectedSecret` and may explicitly reveal it for client construction;
+- unavailable credentials map to sanitized `ProviderFailureCode.CREDENTIAL_UNAVAILABLE`;
+- unsupported credential sources map to sanitized `ProviderFailureCode.INVALID_CONFIGURATION`;
+- unexpected resolver failures and invalid resolver return types fail closed before factory invocation;
+- adapter/factory construction failures normalize to sanitized `ProviderFailureCode.TRANSPORT_ERROR`;
+- sanitized failures are raised outside source exception handlers so secret-bearing resolver/factory diagnostics are not retained as cause/context chains;
+- deterministic fake factory/adapter tests exercise a complete `ModelPortProviderBridge -> BoundedModelRuntime` flow;
+- test secret material is absent from provider request serialization, runtime result serialization, public failures, composer/factory/adapter representations, and model-callable payloads;
+- `docs/PROVIDER_COMPOSITION.md` defines the trust and package boundary.
 
-## Preserved boundaries
+## Package direction
 
-Package direction remains:
+Allowed:
 
 ```text
+xuanmoney.providers   -> xuanmoney.credentials
+xuanmoney.providers   -> xuanmoney.model
 xuanmoney.credentials -> xuanmoney.model
 xuanmoney.runtime     -> xuanmoney.model
-xuanmoney.model -X-> xuanmoney.credentials
 ```
 
-`ModelRequest.context` and `ModelResponse.metadata` remain strict JSON-safe envelopes,
-so `ProtectedSecret` cannot enter provider transport payloads.
-
-Existing runtime/provider path remains:
+Forbidden:
 
 ```text
-BoundedModelRuntime
-        -> ModelPort
-        -> ModelPortProviderBridge
-        -> ModelProvider
-        -> provider adapter (future)
+xuanmoney.model       -X-> xuanmoney.credentials
+xuanmoney.model       -X-> xuanmoney.providers
+xuanmoney.credentials -X-> xuanmoney.providers
 ```
 
-Runtime invariant remains:
+Runtime, tools, and finance code do not receive resolved secret values.
+
+## Preserved runtime/provider policy
 
 ```text
 single plan -> at most one registered tool -> single synthesis -> terminal
+max_attempts = 1
 ```
 
-Provider configuration remains `max_attempts = 1`.
+No Finance Kernel, controlled Tool Registry, runtime execution-sequence, provider retry, or financial-write behavior is changed.
+
+## Explicitly out of scope
+
+- OpenAI/Anthropic/Gemini or other vendor SDKs;
+- external provider network calls;
+- provider-specific HTTP/authentication payloads;
+- retry/backoff or provider fallback;
+- streaming or provider-specific function calling;
+- secret-manager integration or credential persistence;
+- provider logging/metrics infrastructure;
+- new model-callable tools;
+- SQL/Python/shell/filesystem expansion;
+- financial write actions.
 
 ## Verification
 
-Final PR #14 head:
+Canonical command:
 
-```text
-7646a1d38e105aeb844bba01a96dc0395988273d
+```bash
+python -m pip install -e ".[dev]"
+pytest
 ```
 
-Verification:
+Implementation/docs anchor before canonical-state synchronization:
 
-- implementation head `fd26abe156678faac91e01f2efdeabbe43ee0222`: PR CI #267 success;
-- final documentation-synchronized head: PR CI #269 success;
-- GitHub-hosted `ubuntu-latest` / Python 3.12;
-- PR was non-draft and mergeable at final review;
-- branch was `behind_by=0`;
-- no unresolved review threads;
-- final integration review ID `5096782358` found no remaining architecture or safety blocker;
-- squash merge commit: `67c957eb199efc8ee8b7c8955635e667237b58f7`.
+```text
+707523b7744d9fbba47f70fb8e3365c4a331bcb8
+```
 
-## Current limitations
+- PR #16 CI #284: **success** on GitHub-hosted `ubuntu-latest` / Python 3.12;
+- branch was `behind_by=0` at first integration review;
+- changed-file audit before canonical docs sync: production changes limited to new `xuanmoney.providers` package;
+- no runtime, finance, tool, dependency, SDK, network, retry/fallback, or financial-write expansion.
 
-There is still no real external model provider integration:
-
-- no provider adapter consumes resolved credentials yet;
-- no OpenAI/Anthropic/Gemini or other provider SDK;
-- no external provider network call;
-- no provider retry/backoff or fallback;
-- no streaming or provider-specific function calling;
-- no secret-manager integration or API-key persistence;
-- no production API/UI;
-- no new model-callable tool or financial write capability.
+The AGENTS/HANDOFF/development-log synchronization advances the branch beyond the verified anchor, so latest current-head CI must pass before final integration review and merge.
 
 ## Recommended next bounded action
 
-**Start `Provider Adapter Credential Injection v0.1` on a fresh feature branch.**
+**Synchronize `docs/DEVELOPMENT_LOG.md`, then run current-head PR #16 CI and perform final integration review.**
 
-The bounded increment should:
-
-1. define an application-owned adapter-construction/composition boundary that accepts existing `ProviderConfiguration` plus a `CredentialResolver`;
-2. resolve an optional `CredentialReference` through the resolver and keep `ProtectedSecret` outside all serializable configuration/model/runtime payloads;
-3. confine any explicit `ProtectedSecret.reveal()` operation to the trusted adapter-construction/client boundary;
-4. use a deterministic fake provider client/adapter to prove the credential can be consumed without appearing in `ModelRequest`, `ModelResponse`, runtime results, evidence, exceptions, reprs, or test snapshots;
-5. normalize credential-resolution failure before adapter construction without fallback/retry;
-6. preserve `max_attempts = 1`, JSON-safe provider transport, package direction, and the bounded runtime invariant;
-7. keep vendor SDKs and external network calls out of this milestone.
-
-Do **not** combine this milestone with OpenAI/Anthropic/Gemini SDK installation, external provider calls, retry/backoff, fallback, streaming, new analysis tools, or financial write behavior.
+If green, re-check changed-file scope, package direction, PR threads, reveal confinement, secret non-disclosure, failure sanitization, and branch freshness. Only then mark PR #16 ready for integration.

@@ -34,17 +34,18 @@ There is still no external provider SDK or network integration.
 
 ## Package dependency direction
 
-`xuanmoney.model` is the lower-level provider transport package. It contains provider-neutral request/response contracts, `ModelProvider`, and provider adapter implementations. It must not depend on `xuanmoney.runtime` or financial/tool execution modules.
+`xuanmoney.model` is the lower-level provider transport package. It contains provider-neutral request/response contracts, `ModelProvider`, and provider adapter implementations. It must not depend on `xuanmoney.runtime`, `xuanmoney.credentials`, or financial/tool execution modules.
 
 `ModelPortProviderBridge` belongs to `xuanmoney.runtime` because it implements a runtime-facing contract while adapting the lower-level provider package.
 
-Required dependency direction:
+Required dependency directions include:
 
 ```text
 xuanmoney.runtime.provider_bridge -> xuanmoney.model
+xuanmoney.credentials             -> xuanmoney.model
 ```
 
-The reverse dependency is prohibited.
+The reverse dependencies are prohibited.
 
 ## Provider transport contract
 
@@ -57,6 +58,14 @@ The provider layer may:
 - expose provider metadata through the response contract.
 
 The provider layer must not own runtime planning, tool selection, tool execution, financial semantics, validation policy, retry policy, or autonomous control flow.
+
+### JSON-safe envelopes
+
+`ModelRequest.context` and `ModelResponse.metadata` are transport envelopes and must contain only values accepted by strict standard JSON serialization. Non-standard numeric constants (`NaN`, `Infinity`, `-Infinity`) and arbitrary Python objects are rejected during Pydantic validation.
+
+This is a package-neutral safety guard: `xuanmoney.model` does not import credential-resolution types. A runtime-only object such as `ProtectedSecret` is rejected because it is not JSON-serializable, not because the transport package knows about credential implementation details.
+
+Invalid transport values are hidden from Pydantic validation-error strings to reduce diagnostic leakage.
 
 ## ModelPort bridge contract
 
@@ -108,13 +117,14 @@ Provider implementations, provider adapters, and the bridge must not:
 - create hidden model-callable tools;
 - implement autonomous retry or ReAct loops;
 - select alternate tools or execution paths after failure;
-- perform financial write operations.
+- perform financial write operations;
+- place resolved credential values in `ModelRequest`, `ModelResponse`, or provider metadata/context.
 
 ## Current implementation
 
 The repository contains:
 
-- `ModelRequest` / `ModelResponse` with `extra="forbid"`;
+- `ModelRequest` / `ModelResponse` with `extra="forbid"`, hidden invalid-input diagnostics, and strict JSON-safe context/metadata validation;
 - provider-neutral `ModelProvider`;
 - `BaseModelAdapter` as the provider implementation boundary;
 - deterministic `EchoModelAdapter` contract coverage;
@@ -130,4 +140,4 @@ No vendor SDK, credentials, network call, streaming, function-calling provider i
 single plan -> at most one registered tool -> single synthesis -> terminal
 ```
 
-The bridge changes model I/O plumbing only; it does not expand the execution surface.
+The bridge and transport hardening change model I/O plumbing only; they do not expand the execution surface.

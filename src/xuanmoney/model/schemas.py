@@ -5,13 +5,16 @@ import json
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
+_STRICT_TRANSPORT_MODEL = ConfigDict(extra="forbid", hide_input_in_errors=True)
+
+
 class ModelRequest(BaseModel):
     """Input boundary for a model provider.
 
     Provider implementations must translate external payloads into this schema.
     """
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = _STRICT_TRANSPORT_MODEL
 
     prompt: str
     context: dict[str, object] = Field(default_factory=dict)
@@ -25,7 +28,7 @@ class ModelRequest(BaseModel):
 class ModelResponse(BaseModel):
     """Output boundary returned by a provider adapter."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = _STRICT_TRANSPORT_MODEL
 
     content: str
     provider: str

@@ -270,11 +270,7 @@ Perform a bounded **First Real Provider Adapter v0.1 readiness/design review** b
 
 ## 2026-09-03 — OpenAI Provider Adapter v0.1
 
-Status: **READY FOR INTEGRATION**
-
-Branch: `feat/openai-provider-adapter-v0.1`
-
-Integration PR: **#22 — `feat: add OpenAI provider adapter v0.1`**
+Status: **COMPLETE — merged via PR #22**
 
 Implemented:
 
@@ -295,12 +291,14 @@ Verification:
 
 - implementation/test head `26d317d1398b717d15d468288db3dab866231c6c`: PR CI #346 success on GitHub-hosted `ubuntu-latest` / Python 3.12;
 - documentation-synchronized head `564f8becdb06ffd6ea653e8281d5e8035707ffd8`: PR CI #350 success;
-- branch is `behind_by=0` and PR #22 is mergeable;
-- integration review `5103040205` found no remaining code, architecture, provider-safety, dependency-direction, or bounded-scope blocker;
-- local pytest is not claimed because the execution container cannot resolve `github.com`; GitHub-hosted CI is the executable verification authority for this session.
+- development-log synchronized head `c21232783ee59bf932a545ca5507823ee234a0ff`: PR CI #352 success;
+- final handoff head `318a10e565696cb492bce6d02d4a1c5843fb2bfe`: PR CI #354 success;
+- final branch was `behind_by=0`, PR #22 was mergeable, and no review threads remained;
+- integration review `5103040205` found no remaining code, architecture, provider-safety, dependency-direction, governance, or bounded-scope blocker;
+- PR #22 was squash-merged to `main` at `40ddbf723fda8dad0ba8044286bd2a5c2ed3d072`.
 
 No live provider network call, live credential CI, second provider, retry/backoff, fallback, streaming, background response mode, provider-native tools/function calling, secret-manager integration, runtime/finance/tool expansion, production API/UI, or financial write path is introduced.
 
 ### Next boundary
 
-After current-head CI is green and no review/thread blocker appears, squash-merge PR #22 and perform a documentation-only post-merge synchronization before selecting the next provider/runtime capability.
+Start **Application Runtime Composition v0.1** as a separate bounded increment. Add one application-owned construction boundary that wires validated provider configuration, injected credential resolution, the fixed provider factory registry, `ModelPortProviderBridge`, the existing controlled analysis tool registry, and `BoundedModelRuntime` together. Keep deterministic tests network-free and preserve all no-retry/no-fallback/read-only/model-control boundaries.

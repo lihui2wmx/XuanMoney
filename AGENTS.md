@@ -28,7 +28,7 @@ This repository is the source of truth for implementation decisions. AI agents m
 5. Material agent conclusions must carry evidence that identifies source fields, periods, dimensions/members when applicable, and available provenance.
 6. The project remains read-only. Do not add payment, posting, filing, deletion, unrestricted SQL, or other financial write actions without an explicit milestone change.
 7. Do not let an LLM silently define accounting formulas, metric semantics, permissions, validation rules, unknown spreadsheet mappings, or business dimensions.
-8. Any new metric, semantic mapping rule, validator, model-callable tool, runtime transition, provider boundary, provider bridge, provider configuration contract, provider failure contract, credential-resolution boundary, provider-composition boundary, or provider-factory selection boundary requires tests covering normal and edge cases.
+8. Any new metric, semantic mapping rule, validator, model-callable tool, runtime transition, provider boundary, provider bridge, provider configuration contract, provider failure contract, credential-resolution boundary, provider-composition boundary, provider-factory selection boundary, or application runtime-composition boundary requires tests covering normal and edge cases.
 9. Prefer explicit state transitions and typed models over open-ended autonomous loops.
 10. Fail closed on ambiguous financial semantics. Unknown data must not be guessed into canonical finance fields.
 11. Record milestone-level changes in `docs/DEVELOPMENT_LOG.md`.
@@ -55,23 +55,24 @@ This repository is the source of truth for implementation decisions. AI agents m
 32. Concrete credential resolvers must use application-owned composition inputs. The environment resolver receives an injected `Mapping[str, str]`; credential resolution code must not give model/runtime/tool/finance layers direct environment access or expose the backing mapping through representation/errors.
 33. `xuanmoney.providers` is an application-owned composition layer and may depend on `xuanmoney.credentials` and `xuanmoney.model`; neither lower-level package may depend upward on it. Generic composition code must not reveal protected credentials. Only an explicitly trusted adapter/client-construction factory may call `ProtectedSecret.reveal()`, and raw values must not persist beyond that construction boundary.
 34. Provider selection must fail closed. Do not add dynamic imports, entry-point discovery, unrestricted runtime registration, or model-selected factory loading for provider adapters. `ProviderFactoryRegistry` is an explicit application-owned allowlist keyed by validated provider identifiers.
-35. The first real provider implementation target is OpenAI Responses API. Its SDK automatic retries must be explicitly disabled so the repository-wide `max_attempts = 1` invariant remains true; provider-native tools, streaming, background execution, and autonomous tool loops remain out of scope.
+35. The integrated OpenAI Responses adapter must keep SDK automatic retries disabled (`max_retries=0`) so the repository-wide `max_attempts = 1` invariant remains true; provider-native tools, streaming, background execution, and autonomous tool loops remain out of scope.
+36. Application runtime composition must remain application-owned and explicit. It may wire existing provider, credential, bridge, runtime, and controlled-tool boundaries together, but must not move provider selection, secret resolution, environment access, or tool registration into model-controlled surfaces.
 
 ## Current milestone
 
-`First Real Provider Adapter v0.1 Readiness/Design`: **COMPLETE — merged via PR #20**.
+`OpenAI Provider Adapter v0.1`: **COMPLETE — merged via PR #22**.
 
-The selected first provider target is **OpenAI Responses API** through the official Python `openai` SDK. The integrated design defines the adapter/factory contract, SDK retry/timeout policy, credential reveal boundary, request/response translation, stable failure mapping, deterministic fake-client test strategy, and explicit non-goals without installing the SDK or making a provider network call.
+The repository now contains the bounded official OpenAI SDK dependency, one trusted `OpenAIProviderFactory`, and one synchronous Responses API `ModelProvider` adapter. The adapter preserves the existing `ModelRequest(prompt, context)` contract, applies configured timeout, disables SDK retries with `max_retries=0`, issues at most one provider request per `complete()` call, and normalizes provider failures without raw diagnostic or secret disclosure.
 
-PR #20 final head `1d09f6c1e94c44d47883868be9c21f8dd781666f` passed GitHub-hosted PR CI #334 and was squash-merged to `main` at `f3c2cf66917a28a580ea16e4a28ae212de3753d9` after integration design review `5102812238` found no blocker.
+PR #22 final head `318a10e565696cb492bce6d02d4a1c5843fb2bfe` passed GitHub-hosted PR CI #354 and was squash-merged to `main` at `40ddbf723fda8dad0ba8044286bd2a5c2ed3d072` after integration review `5103040205` found no remaining blocker.
 
-The governing design is `docs/OPENAI_PROVIDER_ADAPTER.md`.
+The governing provider document is `docs/OPENAI_PROVIDER_ADAPTER.md`.
 
 ## Next recommended milestone
 
-Start **OpenAI Provider Adapter v0.1** on a fresh feature branch. Implement exactly one provider adapter and trusted factory against the existing registry/composer/model contracts, using deterministic fake SDK clients first.
+Start **Application Runtime Composition v0.1** as a separate bounded increment. Add one application-owned construction boundary that wires validated provider configuration, injected credential resolution, the fixed provider factory registry, `ModelPortProviderBridge`, the controlled analysis tool registry, and `BoundedModelRuntime` together using deterministic tests.
 
-Do not add a second provider, live-network CI, retry/backoff, fallback, streaming, provider-native tools, new analysis tools, runtime/finance expansion, or financial-write behavior in that milestone.
+Do not add a CLI/API/UI, live-network CI, second provider, retry/backoff, fallback, streaming, provider-native tools, new analysis tools, runtime/finance expansion, or financial-write behavior in that milestone.
 
 ## Canonical next action
 

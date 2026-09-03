@@ -31,9 +31,13 @@ The current read-only finance-analysis core can:
 12. publish Pydantic JSON Schemas and stable tool failure codes;
 13. execute a bounded single-plan / at-most-one-tool / single-synthesis runtime through `ModelPort`;
 14. expose a provider-neutral `ModelProvider.complete()` transport contract;
-15. bridge the runtime-facing `ModelPort` to `ModelProvider` with deterministic JSON transport while preserving runtime-owned validation.
+15. bridge the runtime-facing `ModelPort` to `ModelProvider` with deterministic JSON transport while preserving runtime-owned validation;
+16. select provider factories through an immutable application-owned allowlist;
+17. resolve injected environment credential references through a protected credential boundary;
+18. construct an OpenAI Responses API provider through a trusted factory with configured timeout and SDK retries disabled;
+19. map the existing `ModelRequest(prompt, context)` contract into one synchronous Responses API call and normalize provider failures into stable safe codes.
 
-Out of scope: payments, journal posting, tax filing, ERP write-back, autonomous financial execution, unrestricted SQL, arbitrary model filesystem/code execution, model-guessed business semantics, production authentication, and real external model-provider integration in the current milestone.
+Out of scope: payments, journal posting, tax filing, ERP write-back, autonomous financial execution, unrestricted SQL, arbitrary model filesystem/code execution, model-guessed business semantics, production authentication, provider-native autonomous tools, retry/fallback, and financial writes.
 
 ## Architecture
 
@@ -77,10 +81,19 @@ Semantic Registry + Normalized Domain Models
        ModelProvider
              |
              v
- External provider adapter (future)
+ ProviderFactoryRegistry
+             |
+             v
+ OpenAIProviderFactory
+             |
+             v
+ OpenAIProviderAdapter
+             |
+             v
+ OpenAI Responses API
 ```
 
-No real external LLM/provider SDK, credentials, or network call is implemented yet. The current bridge is tested with deterministic fake providers only.
+The OpenAI adapter and official SDK dependency are integrated, but normal CI uses deterministic fake SDK clients and no live API credential or network call. A reusable application-owned runtime composition/bootstrap boundary is not yet implemented.
 
 ## Development setup
 
@@ -144,6 +157,12 @@ schemas = registry.metadata()
 
 The model-callable registry deliberately excludes `load_income_statements`, `load_dimensional_rows`, SQL, Python/shell execution, dynamic imports, and financial write operations. See [`docs/TOOLS.md`](docs/TOOLS.md).
 
+## Provider integration
+
+The first integrated real provider boundary is OpenAI Responses API. Provider configuration remains non-secret, credentials are resolved through the application-owned credential boundary, and the OpenAI SDK client is constructed with automatic retries disabled.
+
+Normal tests and GitHub Actions do not require an OpenAI API key and do not issue live provider requests. See [`docs/OPENAI_PROVIDER_ADAPTER.md`](docs/OPENAI_PROVIDER_ADAPTER.md).
+
 ## Contributing and AI handoff
 
 Start with:
@@ -155,7 +174,12 @@ Start with:
 5. [`docs/TOOLS.md`](docs/TOOLS.md)
 6. [`docs/RUNTIME.md`](docs/RUNTIME.md)
 7. [`docs/PROVIDER_CONTRACT.md`](docs/PROVIDER_CONTRACT.md)
-8. [`CONTRIBUTING.md`](CONTRIBUTING.md)
+8. [`docs/PROVIDER_SAFETY.md`](docs/PROVIDER_SAFETY.md)
+9. [`docs/CREDENTIALS.md`](docs/CREDENTIALS.md)
+10. [`docs/PROVIDER_COMPOSITION.md`](docs/PROVIDER_COMPOSITION.md)
+11. [`docs/PROVIDER_REGISTRY.md`](docs/PROVIDER_REGISTRY.md)
+12. [`docs/OPENAI_PROVIDER_ADAPTER.md`](docs/OPENAI_PROVIDER_ADAPTER.md)
+13. [`CONTRIBUTING.md`](CONTRIBUTING.md)
 
 `docs/HANDOFF.md` is the canonical current-state checkpoint so a new AI agent or contributor can continue without previous conversation context.
 

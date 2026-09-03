@@ -198,7 +198,7 @@ No provider SDK, provider network call, retry/backoff, fallback, streaming, secr
 
 ## 2026-09-03 — Provider Adapter Credential Injection v0.1
 
-Status: **ACTIVE — implementation, runtime-path tests, and composition documentation added; current-head CI pending after canonical docs sync**
+Status: **READY FOR INTEGRATION — implementation reviewed; final current-head CI pending after handoff sync**
 
 Branch: `feat/provider-adapter-credential-injection-v0.1`
 
@@ -206,7 +206,7 @@ Integration PR: **#16 — `feat: add provider adapter credential injection v0.1`
 
 Base: `main@3dc2e5883556048d378b23228d85598a3d620736`.
 
-Implemented:
+Implemented and reviewed:
 
 - new application-owned `xuanmoney.providers` package;
 - `ProviderAdapterFactory` protocol as the trusted provider/client-construction boundary;
@@ -218,11 +218,21 @@ Implemented:
 - unsupported credential sources normalize to `ProviderFailureCode.INVALID_CONFIGURATION`;
 - unexpected resolver failures and invalid resolver return types fail closed;
 - factory/client-construction failures normalize to `ProviderFailureCode.TRANSPORT_ERROR` without retaining raw secret-bearing cause/context chains;
+- invalid factory results lacking a callable `complete()` surface fail closed at composition time as `TRANSPORT_ERROR`;
 - deterministic integration test drives the composed fake provider through `ModelPortProviderBridge` and `BoundedModelRuntime`;
 - tests assert the fake secret is absent from model transport request serialization, runtime result serialization, public failures, and composer/factory/adapter representations;
 - package direction is `xuanmoney.providers -> xuanmoney.credentials -> xuanmoney.model` plus `xuanmoney.providers -> xuanmoney.model`, with no reverse dependency;
 - `docs/PROVIDER_COMPOSITION.md` defines the trusted reveal and failure-normalization boundary.
 
-Implementation/docs anchor `707523b7744d9fbba47f70fb8e3365c4a331bcb8` passed GitHub-hosted PR CI #284 on `ubuntu-latest` / Python 3.12. Canonical AGENTS/HANDOFF/development-log synchronization advances the branch beyond that anchor, so current-head CI must pass before final integration review.
+Verification anchors:
+
+- `707523b7744d9fbba47f70fb8e3365c4a331bcb8`: PR CI #284 success;
+- `8b357c947c80eb44adaf2d091f27f3d35aa717fd`: PR CI #294 success after invalid-provider-result hardening;
+- GitHub-hosted `ubuntu-latest` / Python 3.12;
+- branch `behind_by=0` at final code review;
+- no review submissions or unresolved review threads at review time;
+- production changes limited to new `xuanmoney.providers` code; no runtime/finance/tool/dependency expansion.
+
+The final HANDOFF/DEVELOPMENT_LOG synchronization advances the branch beyond the latest verified code head, so current-head CI must pass before merge.
 
 No vendor SDK, provider network call, provider-specific HTTP/auth implementation, retry/backoff, fallback, streaming, secret manager, credential persistence, new model-callable tool, runtime/finance/tool expansion, or financial write path is introduced.

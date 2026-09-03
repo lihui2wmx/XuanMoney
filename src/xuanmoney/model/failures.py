@@ -36,7 +36,7 @@ class ProviderFailure(BaseModel):
     cannot be supplied by a provider adapter.
     """
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", frozen=True)
 
     code: ProviderFailureCode
 

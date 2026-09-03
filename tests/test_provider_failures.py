@@ -47,6 +47,13 @@ def test_provider_failure_rejects_message_or_diagnostic_injection():
         )
 
 
+def test_provider_failure_is_immutable_after_validation():
+    failure = ProviderFailure.from_code(ProviderFailureCode.TIMEOUT)
+
+    with pytest.raises(ValidationError):
+        failure.code = ProviderFailureCode.TRANSPORT_ERROR
+
+
 def test_provider_transport_error_exposes_only_sanitized_failure():
     error = ProviderTransportError(ProviderFailureCode.TIMEOUT)
     serialized = json.dumps(error.failure.model_dump(mode="json"))

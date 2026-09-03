@@ -33,11 +33,16 @@ def test_provider_failure_uses_stable_safe_message(code, expected_message):
     }
 
 
-def test_provider_failure_public_form_has_no_diagnostic_channel():
+def test_provider_failure_rejects_message_or_diagnostic_injection():
     with pytest.raises(ValidationError):
         ProviderFailure(
             code=ProviderFailureCode.TRANSPORT_ERROR,
-            message="provider transport failed",
+            message="api-key-value: upstream stack trace",
+        )
+
+    with pytest.raises(ValidationError):
+        ProviderFailure(
+            code=ProviderFailureCode.TRANSPORT_ERROR,
             diagnostic="api-key-value: upstream stack trace",
         )
 

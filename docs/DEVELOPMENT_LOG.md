@@ -128,17 +128,9 @@ BoundedModelRuntime
 
 No real provider SDK, credential handling, external model network call, hidden retry, new tool, filesystem/SQL/Python/shell path, or financial write capability was introduced.
 
-### Next boundary
-
-Before adding a real provider SDK, define **Provider Configuration & Safety Contract v0.1**: provider-neutral non-secret configuration, credential references rather than secret values, bounded timeout/no-retry behavior, safe provider failure taxonomy/redaction, and deterministic tests.
-
 ## 2026-09-03 — Provider Configuration & Safety Contract v0.1
 
-Status: **READY FOR INTEGRATION — implementation review clear; final current-head CI required**
-
-Branch: `feat/provider-configuration-safety-v0.1`
-
-Integration PR: **#10 — `feat: add provider configuration safety contract v0.1`**
+Status: **COMPLETE — merged via PR #10**
 
 Implemented:
 
@@ -154,6 +146,10 @@ Implemented:
 - deterministic tests for valid/invalid configuration, timeout/retry bounds and mutation, environment-reference syntax, secret-field rejection, stable safe messages, failure immutability, and diagnostic/message injection rejection;
 - `docs/PROVIDER_SAFETY.md` defining the pre-SDK trust boundary.
 
-Verified implementation anchor `6cefbdac58371bb80b06019aa22c2f67b5d93cb6` passed PR CI #214 on the official GitHub-hosted `ubuntu-latest` runner with Python 3.12. Integration review found no remaining architecture or safety blocker: changed files are limited to `xuanmoney.model` contracts/tests and governance documentation, with no runtime, finance, tool, CI, dependency, SDK, network, retry/fallback, or financial-write expansion.
+Final PR head `93f2d2b8202cb55db31e82efbad11d61f9d78d4c` passed GitHub-hosted PR CI #218 on `ubuntu-latest` / Python 3.12. Final integration review found no remaining architecture or safety blocker, and PR #10 was squash-merged to `main` at `0148962739a80cdb53c25dbbf445dc9584a75a4a`.
 
-This final development-log synchronization advances the branch beyond the verified anchor; merge remains gated on the latest current-head CI being green.
+No real provider SDK, credential resolver, environment read, network call, retry/backoff, fallback, streaming, logging infrastructure, new model-callable tool, execution-surface expansion, or financial write path was introduced.
+
+### Next boundary
+
+Start **Credential Resolver Boundary v0.1** before selecting a real provider SDK. Define an application-owned resolver from `CredentialReference` to a protected/opaque secret wrapper, deterministic sanitized missing-reference failures, and tests proving secret values cannot enter configuration serialization, runtime results, model requests, evidence, logs, or model-callable surfaces.

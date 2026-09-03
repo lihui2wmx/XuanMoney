@@ -16,11 +16,11 @@ It does **not** resolve credentials, call a provider, retry requests, add observ
 - `max_attempts`: fixed to `1`;
 - optional `credential_ref`: a non-secret `CredentialReference`.
 
-Unknown fields are rejected.
+The configuration model is immutable after validation. Unknown fields are rejected.
 
 ### Credential references
 
-A `CredentialReference` identifies where a future application-owned resolver may obtain a credential. It does not contain the credential value.
+A `CredentialReference` identifies where a future application-owned resolver may obtain a credential. It does not contain the credential value and is immutable after validation.
 
 Current supported source:
 
@@ -37,9 +37,9 @@ Example safe value:
 }
 ```
 
-The identifier is a reference name, not the referenced secret. Secret values, API-key values, bearer tokens, passwords, or raw credential payloads must not enter this model.
+For the current environment source, `identifier` must match an environment-variable reference name (`^[A-Za-z_][A-Za-z0-9_]*$`). This is a reference label, not the referenced secret. Secret values, API-key values, bearer tokens, passwords, or raw credential payloads must not enter this model.
 
-No credential resolver is implemented in this milestone.
+No credential resolver or environment-variable read is implemented in this milestone.
 
 ## Retry and timeout policy
 
@@ -50,7 +50,7 @@ The provider configuration contract enforces:
 max_attempts = 1
 ```
 
-`max_attempts` cannot be increased through configuration. There is no automatic provider retry or fallback policy in v0.1.
+`max_attempts` cannot be increased during validation or by mutating a validated configuration object. There is no automatic provider retry or fallback policy in v0.1.
 
 This preserves the existing runtime invariant:
 
@@ -73,7 +73,7 @@ A later real provider adapter may use the configured timeout for one network att
 - `invalid_response`
 - `transport_error`
 
-`ProviderFailure` contains the stable code and a message derived only from that code. Provider adapters cannot inject arbitrary public failure text into the model.
+`ProviderFailure` contains the stable code and a message derived only from that code. Provider adapters cannot inject arbitrary public failure text into the model. The validated failure object is immutable.
 
 Raw provider exceptions, HTTP bodies, stack traces, request payloads, credentials, and secret values are not part of the public failure contract.
 

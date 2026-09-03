@@ -2,62 +2,75 @@
 
 ## Current status
 
-Milestone: **Provider Adapter Credential Injection v0.1 — COMPLETE**
+Milestone: **Controlled Provider Factory Registry v0.1**
 
-Status: **INTEGRATED — post-merge handoff synchronization**
+Status: **READY FOR INTEGRATION — implementation, documentation, CI, and integration review complete**
 
-Main integration commit: `572ac05873ba3ff3cebd182fc72d07bb2f2dec65`
+Development branch: `feat/controlled-provider-factory-registry-v0.1`
 
-Merged PR: **#16 — `feat: add provider adapter credential injection v0.1`**
+Integration PR: **#18 — `feat: add controlled provider factory registry v0.1`**
+
+Base: `main@b06ae469c70496a21458b66ecb4878303db25160`.
+
+Reviewed head before this final handoff synchronization:
+
+```text
+9322313082cdff06f85a7ad76d8c40310672c0ce
+```
+
+PR CI #316 passed on GitHub-hosted `ubuntu-latest` / Python 3.12. Integration review `5096980951` found no remaining architecture, safety, or bounded-scope blocker.
 
 The project is licensed under **Apache License 2.0**.
 
-## Integrated provider composition boundary
+## Controlled provider selection boundary
 
 ```text
-ProviderConfiguration              CredentialResolver
-        |                                 |
-        |                                 v
-        |                         ProtectedSecret
-        |                                 |
-        +---------------+-----------------+
-                        v
-              ProviderAdapterComposer
-                        |
-                        v
-              ProviderAdapterFactory
-              # trusted reveal/construction boundary
-                        |
-                        v
-                  ModelProvider
-                        |
-                        v
-              ModelPortProviderBridge
-                        |
-                        v
-              BoundedModelRuntime
+ProviderConfiguration
+        |
+        v
+ProviderFactoryRegistry
+  # fixed application-owned allowlist
+        |
+        v
+ProviderAdapterFactory
+        |
+        v
+ProviderAdapterComposer
+        |
+        +--> CredentialResolver -> ProtectedSecret
+        |
+        v
+trusted factory reveal/construction boundary
+        |
+        v
+ModelProvider
+        |
+        v
+ModelPortProviderBridge
+        |
+        v
+BoundedModelRuntime
 ```
 
-Integrated through PR #16:
+Implemented and reviewed:
 
-- application-owned `xuanmoney.providers` package;
-- `ProviderAdapterFactory` protocol for trusted provider/client construction;
-- `ProviderAdapterComposer` combines existing provider configuration and credential-resolution contracts;
-- configured credentials resolve once to `ProtectedSecret` before adapter construction;
-- generic composition code never calls `ProtectedSecret.reveal()`;
-- explicit secret reveal is confined to a trusted factory/client-construction implementation;
-- unavailable credentials normalize to sanitized `ProviderFailureCode.CREDENTIAL_UNAVAILABLE`;
-- unsupported credential sources normalize to `ProviderFailureCode.INVALID_CONFIGURATION`;
-- unexpected resolver failures and invalid resolver return values fail closed before factory invocation;
-- adapter/factory construction failures normalize to sanitized `ProviderFailureCode.TRANSPORT_ERROR` without retaining raw cause/context diagnostics;
-- factory results without a callable `complete()` surface fail closed at composition time;
-- deterministic fake adapter/factory tests execute through `ModelPortProviderBridge` and `BoundedModelRuntime`;
-- test credential material remains absent from provider request serialization, runtime result serialization, public failures, and object representations;
-- `docs/PROVIDER_COMPOSITION.md` documents the trusted reveal and failure-normalization boundary.
+- immutable snapshot-based `ProviderFactoryRegistry` in application-owned `xuanmoney.providers`;
+- explicit fixed `provider_id -> ProviderAdapterFactory` allowlist supplied at construction;
+- whitespace-normalized non-blank identifiers aligned with `ProviderConfiguration` string semantics;
+- duplicate/ambiguous identifiers fail closed during registry construction;
+- invalid factories lacking callable `build()` fail closed before credential resolution;
+- unknown configured providers fail closed as sanitized `ProviderFailureCode.INVALID_CONFIGURATION` before factory invocation;
+- registry selection is driven only by application-owned `ProviderConfiguration.provider_id`;
+- selected factories are composed through the existing `ProviderAdapterComposer`;
+- no public `register()`, dynamic import, entry-point/plugin/filesystem discovery, model-controlled factory loading, fallback, or retry-based switching;
+- deterministic registry-level credential-consuming integration selects a fake factory, resolves an injected environment credential, performs trusted reveal only at factory construction, and executes through `ModelPortProviderBridge` and `BoundedModelRuntime`;
+- test secret material remains absent from registry/factory/provider representations, provider request serialization, and runtime result serialization;
+- `docs/PROVIDER_REGISTRY.md` documents the selection and credential-safety boundary;
+- `docs/DEVELOPMENT_LOG.md` records the active milestone state.
 
-## Preserved package and runtime boundaries
+## Preserved boundaries
 
-Allowed dependency direction:
+Allowed package direction remains:
 
 ```text
 xuanmoney.providers   -> xuanmoney.credentials
@@ -66,7 +79,7 @@ xuanmoney.credentials -> xuanmoney.model
 xuanmoney.runtime     -> xuanmoney.model
 ```
 
-Forbidden reverse dependencies:
+Forbidden reverse dependencies remain:
 
 ```text
 xuanmoney.model       -X-> xuanmoney.credentials
@@ -74,62 +87,44 @@ xuanmoney.model       -X-> xuanmoney.providers
 xuanmoney.credentials -X-> xuanmoney.providers
 ```
 
-Runtime invariant remains:
+The registry is not model-callable and does not receive model output. Credential reveal remains confined to a trusted `ProviderAdapterFactory`; registry and generic composition code never call `ProtectedSecret.reveal()`.
+
+Runtime/provider policy remains:
 
 ```text
 single plan -> at most one registered tool -> single synthesis -> terminal
+max_attempts = 1
 ```
-
-Provider configuration remains `max_attempts = 1`.
 
 ## Verification
 
-Final PR #16 head:
+- branch base: `main@b06ae469c70496a21458b66ecb4878303db25160`;
+- core implementation/test commit `2300791fa062d66203791fc82906973b6a22106c`: PR CI #308 success;
+- initial handoff synchronization `df23f502e860d10b07ba89c471b29c474cc4da75`: PR CI #310 success;
+- registry credential-consuming integration commit `1a38d0717cfc0468998310cc93d48e5a644cdc1d`;
+- milestone documentation added in `docs/PROVIDER_REGISTRY.md` and `docs/DEVELOPMENT_LOG.md`;
+- reviewed pre-final-sync head `9322313082cdff06f85a7ad76d8c40310672c0ce`: PR CI #316 success;
+- PR #18 is mergeable and `behind_by=0` against `main` at integration review time;
+- no review threads are unresolved;
+- integration review `5096980951` found no remaining blocker;
+- local checkout was unavailable because external DNS resolution for `github.com` failed; no local-test result is claimed.
 
-```text
-9c1e5dbc47931c5cc0720811a3c5799e7a575fca
-```
-
-Verification:
-
-- initial implementation/docs anchor `707523b7744d9fbba47f70fb8e3365c4a331bcb8`: PR CI #284 success;
-- invalid-provider-result hardening head `8b357c947c80eb44adaf2d091f27f3d35aa717fd`: PR CI #294 success;
-- final canonical-doc synchronized head: PR CI #298 success;
-- GitHub-hosted `ubuntu-latest` / Python 3.12;
-- final branch was `behind_by=0` and PR mergeable;
-- no unresolved review threads;
-- final integration review ID `5096853542` found no remaining architecture or safety blocker;
-- squash merge commit: `572ac05873ba3ff3cebd182fc72d07bb2f2dec65`.
+The final HANDOFF synchronization advances the branch beyond the reviewed head, so current-head GitHub-hosted CI must pass before merge.
 
 ## Current limitations
 
-There is still no controlled provider-factory selection or real external model provider implementation:
-
-- callers currently inject a `ProviderAdapterFactory` directly into `ProviderAdapterComposer`;
-- no fixed `provider_id -> factory` registry exists;
+- no real provider factory implementation exists;
 - no OpenAI/Anthropic/Gemini or other vendor SDK;
-- no external provider network call;
-- no provider-specific HTTP/auth payload implementation;
-- no provider retry/backoff or fallback;
-- no streaming or provider-specific function calling;
+- no external network call or provider-specific HTTP/auth implementation;
+- no provider retry/backoff, fallback, streaming, or provider-specific function calling;
 - no secret-manager integration or credential persistence;
-- no production API/UI;
-- no new model-callable tool or financial write capability.
+- no dynamic provider registration/discovery;
+- no new model-callable tool, runtime/finance/tool expansion, or financial write capability.
 
 ## Recommended next bounded action
 
-**Start `Controlled Provider Factory Registry v0.1` on a fresh feature branch.**
+**Verify current-head PR CI, then integrate PR #18 if the branch remains current and mergeable.**
 
-The bounded increment should:
+After integration, perform a documentation-only post-merge handoff synchronization on `main` before activating any real provider adapter milestone.
 
-1. define an immutable application-owned registry mapping validated `provider_id` strings to trusted `ProviderAdapterFactory` implementations;
-2. expose lookup/build behavior without a public dynamic `register()` API;
-3. reject unknown provider identifiers with a stable sanitized `ProviderFailureCode.INVALID_CONFIGURATION` failure;
-4. ensure provider selection occurs from application configuration only, never from model output or model-callable tool arguments;
-5. prohibit dynamic imports, entry-point/plugin discovery, filesystem discovery, fallback to another provider, or retry-based provider switching;
-6. compose the selected factory through the existing `ProviderAdapterComposer` and deterministic fake resolver/factory tests;
-7. prove duplicate/ambiguous provider identifiers fail closed at registry construction;
-8. preserve credential reveal confinement, JSON-safe model transport, `max_attempts = 1`, and the bounded runtime invariant;
-9. keep vendor SDKs and external network calls out of this milestone.
-
-Do **not** combine this milestone with OpenAI/Anthropic/Gemini SDK installation, external provider calls, retry/backoff, fallback, streaming, new analysis tools, or financial write behavior.
+Do **not** combine the merge/post-merge synchronization with a vendor SDK, external provider network call, retry/backoff, fallback, streaming, new analysis tools, runtime/finance expansion, or financial write behavior.

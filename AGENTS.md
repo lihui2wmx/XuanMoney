@@ -53,23 +53,19 @@ This repository is the source of truth for implementation decisions. AI agents m
 
 ## Current milestone
 
-`Environment Credential Resolver v0.1`: **ACTIVE**.
+`Environment Credential Resolver v0.1`: **COMPLETE — merged via PR #14**.
 
-This milestone implements the first concrete application-owned `CredentialResolver` for existing `CredentialSource.ENVIRONMENT` references. Resolution is driven by an injected mapping, returns only `ProtectedSecret`, and preserves sanitized failure behavior without making process environment access part of model/runtime code.
+Completed properties include a concrete application-owned `EnvironmentCredentialResolver`, injected mapping composition without implicit `os.environ` reads, protected-secret-only success output, sanitized missing/empty/non-string/lookup-failure/unsupported-source behavior without retained diagnostic chains, and deterministic tests independent of host environment contents.
 
-## Exit conditions for the current milestone
+PR #14 final head `7646a1d38e105aeb844bba01a96dc0395988273d` passed GitHub-hosted PR CI #269 and was squash-merged to `main` at `67c957eb199efc8ee8b7c8955635e667237b58f7` after integration review `5096782358` found no remaining blocker.
 
-- concrete `EnvironmentCredentialResolver` implements the existing credential resolver protocol;
-- constructor accepts an injected `Mapping[str, str]` and performs no implicit process-environment lookup;
-- present non-empty environment references resolve to `ProtectedSecret`;
-- missing, empty, invalid-type, mapping-lookup failure, and unsupported-source cases fail closed through existing sanitized credential-resolution errors;
-- resolver representation does not expose the backing mapping or credential values;
-- failure objects retain no reference identifier, secret value, raw mapping diagnostic, cause, or context chain;
-- deterministic tests do not depend on the host process environment;
-- `ProtectedSecret`, strict JSON-safe model transport, `max_attempts = 1`, package direction, and bounded runtime invariants remain unchanged;
-- no provider SDK, provider network call, retry/backoff, fallback, streaming, new tool, or financial-write path is introduced;
-- CI passes on the official GitHub-hosted runner;
-- `docs/CREDENTIALS.md`, development log, and canonical handoff reflect the reviewed state.
+No provider SDK, provider network call, retry/backoff, fallback, secret manager, new model-callable tool, runtime/finance/tool expansion, or financial-write path was introduced.
+
+## Next recommended milestone
+
+`Provider Adapter Credential Injection v0.1`: define and test the trusted application-owned composition path from `ProviderConfiguration` and `CredentialResolver` into a provider adapter without introducing a real vendor SDK or network call. Secret reveal must remain confined to that trusted adapter-construction boundary and must never enter model transport, runtime results, evidence, logs, or model-callable payloads.
+
+Use deterministic fake adapter/client tests first. Do not combine this milestone with OpenAI/Anthropic/Gemini SDK installation or external provider network calls.
 
 ## Canonical next action
 

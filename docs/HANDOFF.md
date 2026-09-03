@@ -2,19 +2,17 @@
 
 ## Current status
 
-Milestone: **Environment Credential Resolver v0.1**
+Milestone: **Environment Credential Resolver v0.1 — COMPLETE**
 
-Status: **READY FOR INTEGRATION — implementation reviewed; final current-head CI required**
+Status: **INTEGRATED — post-merge handoff synchronization**
 
-Development branch: `feat/environment-credential-resolver-v0.1`
+Main integration commit: `67c957eb199efc8ee8b7c8955635e667237b58f7`
 
-Integration PR: **#14 — `feat: add environment credential resolver v0.1`**
-
-Base: `main@0df388a1a4479ca626ff6fa62240268b0331994b`.
+Merged PR: **#14 — `feat: add environment credential resolver v0.1`**
 
 The project is licensed under **Apache License 2.0**.
 
-## Implemented environment resolver
+## Integrated environment resolver
 
 ```text
 application composition
@@ -33,17 +31,17 @@ ProtectedSecret
 future trusted provider integration
 ```
 
-Implemented and reviewed:
+Integrated through PR #14:
 
 - `EnvironmentCredentialResolver` implements the existing `CredentialResolver` protocol;
-- constructor accepts an injected `Mapping[str, str]`; credential code does not import or read `os.environ`;
-- present non-empty values resolve to `ProtectedSecret`;
+- constructor accepts an injected `Mapping[str, str]`; the credential package does not import or read `os.environ`;
+- present non-empty values resolve to `ProtectedSecret` only;
 - missing, empty, non-string, and backing-mapping lookup failures normalize to existing `credential_unavailable`;
 - unsupported sources normalize to existing `unsupported_source`;
-- lookup failures are normalized after the backing exception handler so sanitized failures retain no cause/context diagnostics;
-- resolver `repr` does not expose backing mapping data or credential values;
+- backing-mapping lookup failures are normalized without retaining raw diagnostic cause/context chains;
+- resolver representation does not expose the backing mapping or credential values;
 - deterministic tests use injected mappings and `MappingProxyType`, not host environment contents;
-- existing `ProtectedSecret` redaction/non-serialization behavior is reused unchanged.
+- existing `ProtectedSecret` redaction/non-serialization behavior is unchanged.
 
 ## Preserved boundaries
 
@@ -58,7 +56,7 @@ xuanmoney.model -X-> xuanmoney.credentials
 `ModelRequest.context` and `ModelResponse.metadata` remain strict JSON-safe envelopes,
 so `ProtectedSecret` cannot enter provider transport payloads.
 
-Existing runtime/provider path remains unchanged:
+Existing runtime/provider path remains:
 
 ```text
 BoundedModelRuntime
@@ -76,45 +74,50 @@ single plan -> at most one registered tool -> single synthesis -> terminal
 
 Provider configuration remains `max_attempts = 1`.
 
-## Explicitly out of scope
-
-- OpenAI/Anthropic/Gemini or other provider SDKs;
-- external provider network calls;
-- retry/backoff or provider fallback;
-- streaming or provider-specific function calling;
-- secret-manager integration or API-key persistence;
-- model/runtime/tool/finance direct environment access;
-- new model-callable tools;
-- SQL/Python/shell/filesystem expansion;
-- financial write actions.
-
 ## Verification
 
-Canonical command:
-
-```bash
-python -m pip install -e ".[dev]"
-pytest
-```
-
-Verified implementation head before this documentation sync:
+Final PR #14 head:
 
 ```text
-fd26abe156678faac91e01f2efdeabbe43ee0222
+7646a1d38e105aeb844bba01a96dc0395988273d
 ```
 
-- PR CI #267: **success**;
-- GitHub-hosted `ubuntu-latest` / Python 3.12;
-- PR #14 non-draft and mergeable at review;
-- branch `behind_by=0`;
-- changed-file audit: 7 files, with production changes limited to `xuanmoney.credentials`;
-- no review submissions or unresolved review threads at review time;
-- no runtime, finance, tool, dependency, CI, SDK, network, retry/fallback, or financial-write expansion.
+Verification:
 
-This handoff synchronization advances the branch beyond the verified implementation head, so latest current-head CI must also pass before merge.
+- implementation head `fd26abe156678faac91e01f2efdeabbe43ee0222`: PR CI #267 success;
+- final documentation-synchronized head: PR CI #269 success;
+- GitHub-hosted `ubuntu-latest` / Python 3.12;
+- PR was non-draft and mergeable at final review;
+- branch was `behind_by=0`;
+- no unresolved review threads;
+- final integration review ID `5096782358` found no remaining architecture or safety blocker;
+- squash merge commit: `67c957eb199efc8ee8b7c8955635e667237b58f7`.
+
+## Current limitations
+
+There is still no real external model provider integration:
+
+- no provider adapter consumes resolved credentials yet;
+- no OpenAI/Anthropic/Gemini or other provider SDK;
+- no external provider network call;
+- no provider retry/backoff or fallback;
+- no streaming or provider-specific function calling;
+- no secret-manager integration or API-key persistence;
+- no production API/UI;
+- no new model-callable tool or financial write capability.
 
 ## Recommended next bounded action
 
-**If latest current-head PR #14 CI is green, record final integration review and squash-merge PR #14.**
+**Start `Provider Adapter Credential Injection v0.1` on a fresh feature branch.**
 
-After integration, refresh canonical handoff on a documentation-only branch before selecting the next provider-integration boundary.
+The bounded increment should:
+
+1. define an application-owned adapter-construction/composition boundary that accepts existing `ProviderConfiguration` plus a `CredentialResolver`;
+2. resolve an optional `CredentialReference` through the resolver and keep `ProtectedSecret` outside all serializable configuration/model/runtime payloads;
+3. confine any explicit `ProtectedSecret.reveal()` operation to the trusted adapter-construction/client boundary;
+4. use a deterministic fake provider client/adapter to prove the credential can be consumed without appearing in `ModelRequest`, `ModelResponse`, runtime results, evidence, exceptions, reprs, or test snapshots;
+5. normalize credential-resolution failure before adapter construction without fallback/retry;
+6. preserve `max_attempts = 1`, JSON-safe provider transport, package direction, and the bounded runtime invariant;
+7. keep vendor SDKs and external network calls out of this milestone.
+
+Do **not** combine this milestone with OpenAI/Anthropic/Gemini SDK installation, external provider calls, retry/backoff, fallback, streaming, new analysis tools, or financial write behavior.

@@ -178,22 +178,24 @@ No real environment-variable read, secret manager, provider SDK, network call, r
 
 ## 2026-09-03 — Environment Credential Resolver v0.1
 
-Status: **ACTIVE — implementation and deterministic tests added; PR CI pending**
-
-Branch: `feat/environment-credential-resolver-v0.1`
-
-Base: `main@0df388a1a4479ca626ff6fa62240268b0331994b`.
+Status: **COMPLETE — merged via PR #14**
 
 Implemented:
 
 - concrete application-owned `EnvironmentCredentialResolver` implementing the existing `CredentialResolver` protocol;
 - injected `Mapping[str, str]` input rather than implicit process-environment access;
 - present non-empty environment references return `ProtectedSecret` only;
-- missing and empty values normalize to the existing `credential_unavailable` failure;
+- missing, empty, non-string, and backing-mapping lookup failures normalize to the existing `credential_unavailable` failure;
 - unsupported sources normalize to `unsupported_source`;
-- backing-mapping lookup exceptions are normalized after leaving the underlying exception handler so public failures retain no diagnostic cause/context chain;
+- lookup failures are normalized outside the backing exception handler so sanitized failures retain no raw diagnostic cause/context chain;
 - resolver representation is redacted and does not expose the backing mapping or values;
-- deterministic tests use injected mappings/`MappingProxyType` and cover present, missing, empty, unsupported, and failing-mapping cases;
+- deterministic tests use injected mappings/`MappingProxyType` and cover present, missing, empty, non-string, unsupported, and failing-mapping cases;
 - existing `ProtectedSecret`, JSON-safe model transport, package direction, `max_attempts = 1`, runtime execution sequence, finance logic, and tool registry remain unchanged.
 
-No provider SDK, provider network call, retry/backoff, fallback, streaming, secret manager, API-key persistence, model/runtime direct environment access, new model-callable tool, or financial write path is introduced.
+Implementation head `fd26abe156678faac91e01f2efdeabbe43ee0222` passed PR CI #267. Final head `7646a1d38e105aeb844bba01a96dc0395988273d` passed PR CI #269 on GitHub-hosted `ubuntu-latest` / Python 3.12. Integration review `5096782358` found no remaining architecture or safety blocker, and PR #14 was squash-merged to `main` at `67c957eb199efc8ee8b7c8955635e667237b58f7`.
+
+No provider SDK, provider network call, retry/backoff, fallback, streaming, secret manager, API-key persistence, model/runtime direct environment access, new model-callable tool, or financial write path was introduced.
+
+### Next boundary
+
+Start **Provider Adapter Credential Injection v0.1** as a separate bounded increment. Define the trusted application-owned composition path from existing `ProviderConfiguration` and `CredentialResolver` into a deterministic fake provider adapter/client, confine explicit secret reveal to that boundary, and prove secrets never enter provider transport envelopes, runtime results, evidence, errors, reprs, or model-callable payloads. Keep real vendor SDKs and external network calls out of the milestone.

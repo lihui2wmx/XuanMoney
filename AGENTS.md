@@ -15,8 +15,9 @@ This repository is the source of truth for implementation decisions. AI agents m
 9. `docs/CREDENTIALS.md`
 10. `docs/PROVIDER_COMPOSITION.md`
 11. `docs/PROVIDER_REGISTRY.md`
-12. the relevant section of `docs/DEVELOPMENT_LOG.md`
-13. implementation and tests touched by the active bounded increment
+12. `docs/OPENAI_PROVIDER_ADAPTER.md`
+13. the relevant section of `docs/DEVELOPMENT_LOG.md`
+14. implementation and tests touched by the active bounded increment
 
 ## Working model
 
@@ -54,22 +55,21 @@ This repository is the source of truth for implementation decisions. AI agents m
 32. Concrete credential resolvers must use application-owned composition inputs. The environment resolver receives an injected `Mapping[str, str]`; credential resolution code must not give model/runtime/tool/finance layers direct environment access or expose the backing mapping through representation/errors.
 33. `xuanmoney.providers` is an application-owned composition layer and may depend on `xuanmoney.credentials` and `xuanmoney.model`; neither lower-level package may depend upward on it. Generic composition code must not reveal protected credentials. Only an explicitly trusted adapter/client-construction factory may call `ProtectedSecret.reveal()`, and raw values must not persist beyond that construction boundary.
 34. Provider selection must fail closed. Do not add dynamic imports, entry-point discovery, unrestricted runtime registration, or model-selected factory loading for provider adapters. `ProviderFactoryRegistry` is an explicit application-owned allowlist keyed by validated provider identifiers.
+35. The first real provider implementation target is OpenAI Responses API. Its SDK automatic retries must be explicitly disabled so the repository-wide `max_attempts = 1` invariant remains true; provider-native tools, streaming, background execution, and autonomous tool loops remain out of scope.
 
 ## Current milestone
 
-`Controlled Provider Factory Registry v0.1`: **COMPLETE — merged via PR #18**.
+`First Real Provider Adapter v0.1 Readiness/Design`: **ACTIVE**.
 
-The integrated registry is immutable and snapshot-based, maps validated `provider_id` values to trusted `ProviderAdapterFactory` implementations, rejects unknown/duplicate/invalid entries fail-closed, exposes no public dynamic registration or discovery path, and composes selected factories through the existing credential-resolution and trusted reveal boundary.
+The selected first provider target is **OpenAI Responses API** through the official Python `openai` SDK. This milestone defines the future adapter/factory contract, SDK retry/timeout policy, credential reveal boundary, request/response translation, stable failure mapping, deterministic fake-client test strategy, and explicit non-goals without installing the SDK or making a provider network call.
 
-PR #18 final head `4cc6d621c9296cff5424ae13f95b0607a20cb931` passed GitHub-hosted PR CI #320 and was squash-merged to `main` at `73f7cbb5ffeeeaa79204d5c38f12e2e1c47f6b56` after integration review `5096980951` found no remaining blocker.
-
-No vendor SDK, external provider network call, provider-specific HTTP/auth implementation, retry/backoff, fallback, streaming, dynamic provider discovery, new model-callable tool, runtime/finance/tool expansion, or financial-write path was introduced.
+The governing design is `docs/OPENAI_PROVIDER_ADAPTER.md`.
 
 ## Next recommended milestone
 
-Perform a bounded **First Real Provider Adapter v0.1 readiness/design review** before implementation. Select one concrete provider target and define the exact SDK/client, timeout application, request/response translation, authentication construction, stable failure mapping, dependency footprint, and test strategy while preserving the existing registry, credential reveal, no-retry, bounded-runtime, and read-only financial boundaries.
+After this readiness/design increment is reviewed and integrated, start **OpenAI Provider Adapter v0.1** on a fresh feature branch. Implement exactly one provider adapter and trusted factory against the existing registry/composer/model contracts, using deterministic fake SDK clients first.
 
-Do not begin multi-provider support, retry/fallback, streaming, provider-specific tool calling, observability expansion, or financial-write behavior in the same increment.
+Do not add a second provider, live-network CI, retry/backoff, fallback, streaming, provider-native tools, new analysis tools, runtime/finance expansion, or financial-write behavior in that milestone.
 
 ## Canonical next action
 

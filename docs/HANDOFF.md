@@ -8,7 +8,9 @@ Status: **IMPLEMENTATION COMPLETE — current-head CI and integration review pen
 
 Development branch: `feat/provider-configuration-safety-v0.1`
 
-Base: latest `main` after ModelPort Provider Bridge v0.1 and its post-merge documentation synchronization.
+Integration PR: **#10 — `feat: add provider configuration safety contract v0.1`**
+
+Base: `main` at `23964aaafdf6d3e341550d6c01712e22ecb5b130`, which contains ModelPort Provider Bridge v0.1 and its post-merge handoff synchronization.
 
 The project is licensed under **Apache License 2.0**.
 
@@ -104,6 +106,6 @@ Current branch changes require current-head CI verification before integration r
 
 ## Recommended next bounded action
 
-**Verify current-head CI, then perform integration review for Provider Configuration & Safety Contract v0.1.**
+**Verify current-head PR #10 CI, then perform integration review for Provider Configuration & Safety Contract v0.1.**
 
 Review should confirm that secret values have no serializable contract field, timeout/retry policy remains bounded, failure messages cannot carry provider-supplied diagnostic text, package dependency direction remains unchanged, and no SDK/network/execution-surface expansion entered the branch.
